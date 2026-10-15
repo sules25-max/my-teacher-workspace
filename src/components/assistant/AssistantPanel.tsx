@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Send, ShieldCheck, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Send, ShieldCheck, X } from 'lucide-react';
 import { AssistantAvatar } from './AssistantAvatar';
 import { AgentScene } from '../agent/AgentScene';
 import { react } from '../agent/agentStore';
@@ -33,6 +33,22 @@ export function AssistantPanel({ open, onClose, setExpression }: Props) {
   const [ctx, setCtx] = useState<AIContext | null>(null);
   const [includeCtx, setIncludeCtx] = useState(true);
   const [remote, setRemote] = useState(false);
+  // 채팅 공간을 넓게 쓰고 싶을 때 방(장면)을 접어 둔다. 기기에 기억
+  const [sceneCollapsed, setSceneCollapsedState] = useState(() => {
+    try {
+      return localStorage.getItem('mtw.agent.collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setSceneCollapsed = (v: boolean) => {
+    setSceneCollapsedState(v);
+    try {
+      localStorage.setItem('mtw.agent.collapsed', v ? '1' : '0');
+    } catch {
+      /* 무시 */
+    }
+  };
   const listRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const provider = getAIProvider(s);
@@ -148,11 +164,20 @@ export function AssistantPanel({ open, onClose, setExpression }: Props) {
               <ShieldCheck size={13} /> {remote ? provider.label : '기기 안에서만 동작'}
             </span>
           </div>
+          <button
+            className="icon-btn"
+            onClick={() => setSceneCollapsed(!sceneCollapsed)}
+            aria-pressed={sceneCollapsed}
+            aria-label={sceneCollapsed ? 'AI 이나의 방 펼치기' : 'AI 이나의 방 접기'}
+            title={sceneCollapsed ? '방 펼치기' : '방 접기'}
+          >
+            {sceneCollapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+          </button>
           <button className="icon-btn" onClick={onClose} aria-label="비서 닫기">
             <X size={20} />
           </button>
         </header>
-        <div className="ai-panel__scene">
+        <div className={cx('ai-panel__scene', sceneCollapsed && 'is-collapsed')}>
           <AgentScene size="large" />
         </div>
 
