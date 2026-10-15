@@ -25,7 +25,7 @@ npm run build      # 타입 검사 + 프로덕션 빌드 (dist/)
 
 1. [script.google.com](https://script.google.com) → 새 프로젝트 → `apps-script/Code.gs` 내용을 붙여 넣기 (`appsscript.json`도 프로젝트 설정에서 매니페스트 표시 후 붙여 넣기).
 2. `setup` 함수를 한 번 실행 → 권한 허용 → 실행 로그의 **연결 토큰** 복사.
-3. (AI 사용 시) 프로젝트 설정 → 스크립트 속성에 `GROQ_API_KEY` (또는 `GEMINI_API_KEY` / `OPENAI_API_KEY`) 추가 → 앱 설정 → AI 비서에서 같은 제공자 선택.
+3. (AI 사용 시) 프로젝트 설정 → 스크립트 속성에 `GROQ_API_KEY` · `GEMINI_API_KEY` · `OPENAI_API_KEY` 중 원하는 만큼 추가 → 앱 설정 → AI 비서에서 우선 쓸 AI 선택. 고른 AI가 실패하면 키가 있는 다른 AI로 자동 전환됩니다.
 4. 배포 → 새 배포 → 웹 앱 (실행: 나 / 액세스: 모든 사용자) → URL 복사.
 5. 앱 **Settings → Google 동기화** 에 URL과 토큰 입력 → 연결 테스트 → 연결하기.
 

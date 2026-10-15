@@ -369,14 +369,42 @@ function parseDate_(iso) {
 // ---------------------------------------------------------------- AI 프록시
 // API 키는 스크립트 속성(GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY)에서만 읽는다.
 
+var AI_PROVIDERS = {
+  groq: { keyName: 'GROQ_API_KEY', model: 'llama-3.3-70b-versatile' },
+  gemini: { keyName: 'GEMINI_API_KEY', model: 'gemini-2.5-flash' },
+  openai: { keyName: 'OPENAI_API_KEY', model: 'gpt-4o-mini' },
+};
+var AI_ORDER = ['groq', 'gemini', 'openai'];
+
+/**
+ * 고른 AI를 먼저 쓰고, 키가 없거나 실패(한도 초과·장애 등)하면
+ * 스크립트 속성에 키가 있는 다른 AI로 차례대로 넘어간다.
+ */
 function aiChat(p) {
   var props = PropertiesService.getScriptProperties();
   var system = String(p.system || '');
   var context = String(p.context || '').slice(0, 6000);
   var messages = (p.messages || []).slice(-8);
-  if (p.provider === 'groq') return { text: openAICompatChat_(GROQ_URL, 'GROQ_API_KEY', props.getProperty('GROQ_API_KEY'), p.model || 'llama-3.3-70b-versatile', system, context, messages) };
-  if (p.provider === 'openai') return { text: openAICompatChat_(OPENAI_URL, 'OPENAI_API_KEY', props.getProperty('OPENAI_API_KEY'), p.model || 'gpt-4o-mini', system, context, messages) };
-  return { text: geminiChat_(props.getProperty('GEMINI_API_KEY'), p.model || 'gemini-2.5-flash', system, context, messages) };
+  var first = AI_PROVIDERS[p.provider] ? p.provider : AI_ORDER[0];
+  var chain = [first].concat(AI_ORDER.filter(function (x) { return x !== first; }));
+  var errors = [];
+  for (var i = 0; i < chain.length; i++) {
+    var id = chain[i];
+    var cfg = AI_PROVIDERS[id];
+    var key = props.getProperty(cfg.keyName);
+    if (!key) continue;
+    // 사용자가 정한 모델명은 처음 고른 AI에만 적용하고, 대체 AI는 기본 모델을 쓴다
+    var model = id === first && p.model ? p.model : cfg.model;
+    try {
+      var text = id === 'gemini'
+        ? geminiChat_(key, model, system, context, messages)
+        : openAICompatChat_(id === 'groq' ? GROQ_URL : OPENAI_URL, cfg.keyName, key, model, system, context, messages);
+      return { text: text, provider: id, fallback: id !== first };
+    } catch (e) {
+      errors.push(id + ': ' + (e && e.message ? e.message : e));
+    }
+  }
+  throw new Error(errors.length ? 'AI 호출 실패 (' + errors.join(' / ') + ')' : '스크립트 속성에 GROQ_API_KEY · GEMINI_API_KEY · OPENAI_API_KEY 중 하나도 없어요.');
 }
 
 function geminiChat_(key, model, system, context, messages) {

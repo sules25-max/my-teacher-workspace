@@ -39,13 +39,15 @@ class AppsScriptProxyProvider implements AIProvider {
     return !!(await getAppsScriptConfig()) && navigator.onLine;
   }
   async chat(messages: AIMessage[], context: AIContext | null) {
-    const res = await callAppsScript<{ text: string }>(
+    const res = await callAppsScript<{ text: string; provider?: string; fallback?: boolean }>(
       'aiChat',
       { provider: this.id, model: this.model, system: SYSTEM, context: context?.text ?? '', messages: messages.slice(-8) },
       undefined,
       60000,
     );
-    return res.text;
+    const names: Record<string, string> = { groq: 'Groq', gemini: 'Gemini', openai: 'OpenAI' };
+    // 고른 AI 대신 다른 AI가 답했으면 알려 준다
+    return res.fallback && res.provider ? `${res.text}\n\n(${names[this.id]} 대신 ${names[res.provider] ?? res.provider}로 답했어)` : res.text;
   }
 }
 

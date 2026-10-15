@@ -580,9 +580,9 @@ function AISettings({ s }: { s: Settings }) {
       <Field label="AI Provider">
         <select className="select" value={s.ai.provider} onChange={(e) => void saveSettings({ ai: { ...s.ai, provider: e.target.value as Settings['ai']['provider'] } })}>
           <option value="local">기기 안 비서 (외부 전송 없음)</option>
-          <option value="groq">Groq</option>
-          <option value="gemini">Gemini</option>
-          <option value="openai">OpenAI</option>
+          <option value="groq">Groq 우선</option>
+          <option value="gemini">Gemini 우선</option>
+          <option value="openai">OpenAI 우선</option>
         </select>
       </Field>
       {s.ai.provider !== 'local' && (
@@ -590,6 +590,7 @@ function AISettings({ s }: { s: Settings }) {
           <TextSetting value={s.ai.model ?? ''} placeholder={{ groq: 'llama-3.3-70b-versatile', gemini: 'gemini-2.5-flash', openai: 'gpt-4o-mini', local: '' }[s.ai.provider]} onSave={(model) => saveSettings({ ai: { ...s.ai, model: model || undefined } })} />
         </Field>
       )}
+      {s.ai.provider !== 'local' && <p className="muted">고른 AI가 안 되면(키 없음 · 한도 초과 · 장애) 스크립트 속성에 키가 있는 다른 AI로 자동으로 넘어가요. 순서: 고른 AI → Groq → Gemini → OpenAI</p>}
       <p className="chip">AI API 상태: {status}</p>
       <p className="muted">API 키는 앱 코드나 이 기기에 저장하지 않아요. Apps Script 프로젝트 설정 → 스크립트 속성(PropertiesService)에 GROQ_API_KEY · GEMINI_API_KEY · OPENAI_API_KEY 중 쓰는 것을 넣어 주세요.</p>
     </>
