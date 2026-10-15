@@ -4,6 +4,7 @@ import { Check as CheckIcon, Copy, Sparkles, Trash2 } from 'lucide-react';
 import { db } from '../../services/localDb';
 import * as repo from '../../services/repo';
 import { useSettings } from '../../hooks/useData';
+import { useRoute } from '../../hooks/useRoute';
 import { closeLesson, useLessonTarget, type LessonTarget } from './lessonDrawerStore';
 import { Drawer, Modal, confirmDialog, toast } from '../common/overlays';
 import { AutoInput, AutoTextarea, Checklist } from '../common/fields';
@@ -34,6 +35,9 @@ import { PixelIcon } from '../common/Deco';
 
 export function LessonDrawerHost() {
   const target = useLessonTarget();
+  const route = useRoute();
+  // 다른 화면으로 이동하면 수업 카드를 닫는다
+  useEffect(() => closeLesson(), [route.name]);
   return (
     <Drawer
       open={!!target}

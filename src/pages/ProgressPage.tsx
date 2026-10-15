@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../services/localDb';
 import { useSettings } from '../hooks/useData';
-import { classesOfGrade, computeClassProgress, curriculumFor, lessonStatus, toggleProgressCell, setLessonCompleted, markProgressUpTo } from '../services/planner';
+import { classesOfGrade, computeClassProgress, curriculumFor, lessonStatus, toggleProgressCell, setLessonCompleted, markProgressUpTo, inAcademicYear } from '../services/planner';
+import { MoreHorizontal, Plus } from 'lucide-react';
 import type { CurriculumLesson, ProgressEntry } from '../types';
 import { cx } from '../utils/id';
 import { todayISO, formatShort } from '../utils/date';
@@ -25,6 +26,18 @@ export function ProgressPage() {
   const lead = Math.max(0, ...progress.map((p) => p.done));
   const curr = curriculumFor(s, g);
   const [cell, setCell] = useState<{ cls: string; lesson: CurriculumLesson } | null>(null);
+  const yearEntries = entries.filter((e) => inAcademicYear(s, e.date));
+  const isDone = (cls: string, lessonId: string, n: number) => yearEntries.find((e) => e.classKey === cls && e.lessonId === lessonId && e.session === n);
+
+  /** 주간 일정 없이 진도표에서 바로 체크 · 해제 */
+  const toggle = async (cls: string, lesson: CurriculumLesson, n: number) => {
+    const e = isDone(cls, lesson.id, n);
+    if (e?.source === 'lesson') {
+      const ok = await confirmDialog({ title: '진도 기록 지우기', message: `${cls} ${lesson.name} ${n}차시는 수업 카드에서 완료한 기록이에요. 진도표에서만 지울까요?`, confirmLabel: '지우기', danger: true });
+      if (!ok) return;
+    }
+    await toggleProgressCell(s, cls, lesson, n, todayISO());
+  };
 
   return (
     <div className="progress-page">
@@ -88,7 +101,20 @@ export function ProgressPage() {
                     </span>
                     <span className="progress-row__next">
                       {behind >= 1 && <span className={cx('chip', behind >= 2 && 'chip--warn')}>{behind}차시 느림</span>}
-                      {p.next && <span className="muted">다음 {p.next.lesson} {p.next.session}차시</span>}
+                      {p.next && (
+                        <button
+                          className="btn btn--sm progress-row__plus"
+                          onClick={async () => {
+                            const lesson = curr.find((l) => l.id === p.next!.lessonId);
+                            if (!lesson) return;
+                            await toggleProgressCell(s, p.key, lesson, p.next!.session, todayISO());
+                            toast(`${p.key} ${p.next!.lesson} ${p.next!.session}차시 완료로 표시했어요.`, { label: '되돌리기', run: () => void toggleProgressCell(s, p.key, lesson, p.next!.session, todayISO()) });
+                          }}
+                          aria-label={`${p.key} ${p.next.lesson} ${p.next.session}차시 완료로 표시`}
+                        >
+                          <Plus size={14} /> {p.next.lesson.replace('Lesson ', 'L')}-{p.next.session} 완료
+                        </button>
+                      )}
                     </span>
                   </li>
                 );
@@ -101,9 +127,7 @@ export function ProgressPage() {
       <section className="card progress-matrix-card">
         <div className="card__head">
           <h2 className="card__title">Lesson별 세부표</h2>
-          <span className="legend muted">
-            <span className="dot dot--done" /> 완료 <span className="dot dot--partial" /> 진행 중 <span className="dot dot--none" /> 시작 전
-          </span>
+          <span className="legend muted">칸을 눌러 바로 체크 · 해제 · ⋯ 앞 차시 한꺼번에</span>
         </div>
         <div className="card__body matrix-scroll">
           <table className="matrix">
@@ -128,12 +152,26 @@ export function ProgressPage() {
                     const st = lessonStatus(l, c.key, entries, s);
                     return (
                       <td key={c.key}>
-                        <button className={cx('matrix__cell', `is-${st.status}`)} onClick={() => setCell({ cls: c.key, lesson: l })} aria-label={`${c.key} ${l.name} ${st.count}/${l.sessions}차시`}>
-                          <span className="matrix__dot" aria-hidden="true" />
-                          <span className="matrix__count">
-                            {st.count}/{l.sessions}
-                          </span>
-                        </button>
+                        <div className={cx('matrix__cell', `is-${st.status}`)} role="group" aria-label={`${c.key} ${l.name} ${st.count}/${l.sessions}차시`}>
+                          {Array.from({ length: l.sessions }, (_, i) => i + 1).map((n) => {
+                            const e = isDone(c.key, l.id, n);
+                            return (
+                              <button
+                                key={n}
+                                className={cx('session-box', e && 'is-done', e?.source === 'lesson' && 'is-lesson')}
+                                aria-pressed={!!e}
+                                aria-label={`${c.key} ${l.name} ${n}차시 ${e ? '완료됨, 눌러서 해제' : '눌러서 완료'}`}
+                                title={e ? `${n}차시 · ${formatShort(e.date)}${e.source === 'lesson' ? ' (수업 카드)' : ''}` : `${n}차시`}
+                                onClick={() => void toggle(c.key, l, n)}
+                              >
+                                {n}
+                              </button>
+                            );
+                          })}
+                          <button className="icon-btn matrix__more" onClick={() => setCell({ cls: c.key, lesson: l })} aria-label={`${c.key} ${l.name} 날짜 보기 · 앞 차시 한꺼번에`}>
+                            <MoreHorizontal size={16} />
+                          </button>
+                        </div>
                       </td>
                     );
                   })}

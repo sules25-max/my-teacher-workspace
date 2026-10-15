@@ -209,8 +209,9 @@ export async function setLessonCompleted(rec: LessonRecord, completed: boolean):
   return { progressChanged: linked.length > 0 };
 }
 
+/** 진도표에서 직접 체크/해제한다(주간 일정과 무관). 올해 학년도 기록만 대상으로 한다. */
 export async function toggleProgressCell(s: Settings, cls: string, lesson: CurriculumLesson, session: number, date: string) {
-  const existing = await db.progress.where('[classKey+lessonId+session]').equals([cls, lesson.id, session]).first();
+  const existing = (await db.progress.where('[classKey+lessonId+session]').equals([cls, lesson.id, session]).toArray()).find((e) => inAcademicYear(s, e.date));
   if (existing) {
     await repo.remove('progress', existing.id);
     return;
@@ -224,7 +225,6 @@ export async function toggleProgressCell(s: Settings, cls: string, lesson: Curri
     date,
     source: 'manual',
   });
-  void s;
 }
 
 // ---------- 다른 반으로 복사 ----------
