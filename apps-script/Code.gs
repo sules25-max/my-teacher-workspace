@@ -4,7 +4,7 @@
  * 설정 방법
  *  1. script.google.com 에서 새 프로젝트를 만들고 이 파일 내용을 붙여 넣는다.
  *  2. 함수 목록에서 setup 을 실행하고 권한을 허용한다. 실행 로그에 "연결 토큰"이 나온다.
- *  3. (선택) 프로젝트 설정 → 스크립트 속성에 GEMINI_API_KEY 또는 OPENAI_API_KEY 를 추가한다.
+ *  3. (선택) 프로젝트 설정 → 스크립트 속성에 GROQ_API_KEY, GEMINI_API_KEY 또는 OPENAI_API_KEY 를 추가한다.
  *  4. 배포 → 새 배포 → 유형: 웹 앱 / 실행 사용자: 나 / 액세스 권한: 모든 사용자 → URL 복사
  *  5. 앱 설정 → Google 동기화 에 URL과 토큰을 넣는다.
  *
@@ -367,14 +367,15 @@ function parseDate_(iso) {
 }
 
 // ---------------------------------------------------------------- AI 프록시
-// API 키는 스크립트 속성(GEMINI_API_KEY / OPENAI_API_KEY)에서만 읽는다.
+// API 키는 스크립트 속성(GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY)에서만 읽는다.
 
 function aiChat(p) {
   var props = PropertiesService.getScriptProperties();
   var system = String(p.system || '');
   var context = String(p.context || '').slice(0, 6000);
   var messages = (p.messages || []).slice(-8);
-  if (p.provider === 'openai') return { text: openAIChat_(props.getProperty('OPENAI_API_KEY'), p.model || 'gpt-4o-mini', system, context, messages) };
+  if (p.provider === 'groq') return { text: openAICompatChat_(GROQ_URL, 'GROQ_API_KEY', props.getProperty('GROQ_API_KEY'), p.model || 'llama-3.3-70b-versatile', system, context, messages) };
+  if (p.provider === 'openai') return { text: openAICompatChat_(OPENAI_URL, 'OPENAI_API_KEY', props.getProperty('OPENAI_API_KEY'), p.model || 'gpt-4o-mini', system, context, messages) };
   return { text: geminiChat_(props.getProperty('GEMINI_API_KEY'), p.model || 'gemini-2.5-flash', system, context, messages) };
 }
 
@@ -404,14 +405,17 @@ function geminiChat_(key, model, system, context, messages) {
     .join('');
 }
 
-function openAIChat_(key, model, system, context, messages) {
-  if (!key) throw new Error('스크립트 속성에 OPENAI_API_KEY가 없어요.');
+var OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'; // Groq는 OpenAI 호환 API
+
+function openAICompatChat_(url, keyName, key, model, system, context, messages) {
+  if (!key) throw new Error('스크립트 속성에 ' + keyName + '가 없어요.');
   var msgs = [{ role: 'system', content: system + (context ? '\n\n[참고 자료]\n' + context : '') }].concat(
     messages.map(function (m) {
       return { role: m.role, content: m.content };
     }),
   );
-  var res = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
+  var res = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + key },
@@ -419,7 +423,7 @@ function openAIChat_(key, model, system, context, messages) {
     payload: JSON.stringify({ model: model, messages: msgs, max_tokens: 800, temperature: 0.4 }),
   });
   var j = JSON.parse(res.getContentText());
-  if (res.getResponseCode() >= 300) throw new Error((j.error && j.error.message) || 'OpenAI 오류');
+  if (res.getResponseCode() >= 300) throw new Error((j.error && j.error.message) || 'AI 응답 오류');
   return j.choices[0].message.content;
 }
 

@@ -557,7 +557,7 @@ function SyncSettings({ s }: { s: Settings }) {
         <ol>
           <li>script.google.com → 새 프로젝트를 만들고, 프로젝트의 apps-script/Code.gs 내용을 붙여 넣어요.</li>
           <li>함수 목록에서 setup을 한 번 실행하고 권한을 허용해요. 실행 로그에 연결 토큰이 나와요.</li>
-          <li>(AI를 쓸 때) 프로젝트 설정 → 스크립트 속성에 GEMINI_API_KEY 또는 OPENAI_API_KEY를 추가해요.</li>
+          <li>(AI를 쓸 때) 프로젝트 설정 → 스크립트 속성에 GROQ_API_KEY(또는 GEMINI_API_KEY / OPENAI_API_KEY)를 추가해요.</li>
           <li>배포 → 새 배포 → 웹 앱, 실행 사용자: 나, 액세스: 모든 사용자로 배포하고 URL을 위에 붙여 넣어요.</li>
           <li>한 기기에서 연결하면, 다른 기기는 ‘다른 기기 연결’의 QR · 링크 · 연결 코드로 바로 연결돼요. AI 키도 Apps Script에 있으니 함께 쓸 수 있어요.</li>
         </ol>
@@ -580,17 +580,18 @@ function AISettings({ s }: { s: Settings }) {
       <Field label="AI Provider">
         <select className="select" value={s.ai.provider} onChange={(e) => void saveSettings({ ai: { ...s.ai, provider: e.target.value as Settings['ai']['provider'] } })}>
           <option value="local">기기 안 비서 (외부 전송 없음)</option>
+          <option value="groq">Groq</option>
           <option value="gemini">Gemini</option>
           <option value="openai">OpenAI</option>
         </select>
       </Field>
       {s.ai.provider !== 'local' && (
         <Field label="모델 (선택)" hint="비워 두면 Apps Script의 기본 모델을 써요.">
-          <TextSetting value={s.ai.model ?? ''} placeholder={s.ai.provider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4o-mini'} onSave={(model) => saveSettings({ ai: { ...s.ai, model: model || undefined } })} />
+          <TextSetting value={s.ai.model ?? ''} placeholder={{ groq: 'llama-3.3-70b-versatile', gemini: 'gemini-2.5-flash', openai: 'gpt-4o-mini', local: '' }[s.ai.provider]} onSave={(model) => saveSettings({ ai: { ...s.ai, model: model || undefined } })} />
         </Field>
       )}
       <p className="chip">AI API 상태: {status}</p>
-      <p className="muted">API 키는 앱 코드나 이 기기에 저장하지 않아요. Apps Script 프로젝트 설정 → 스크립트 속성(PropertiesService)에 넣어 주세요.</p>
+      <p className="muted">API 키는 앱 코드나 이 기기에 저장하지 않아요. Apps Script 프로젝트 설정 → 스크립트 속성(PropertiesService)에 GROQ_API_KEY · GEMINI_API_KEY · OPENAI_API_KEY 중 쓰는 것을 넣어 주세요.</p>
     </>
   );
 }

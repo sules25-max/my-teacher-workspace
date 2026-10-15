@@ -25,7 +25,7 @@ npm run build      # 타입 검사 + 프로덕션 빌드 (dist/)
 
 1. [script.google.com](https://script.google.com) → 새 프로젝트 → `apps-script/Code.gs` 내용을 붙여 넣기 (`appsscript.json`도 프로젝트 설정에서 매니페스트 표시 후 붙여 넣기).
 2. `setup` 함수를 한 번 실행 → 권한 허용 → 실행 로그의 **연결 토큰** 복사.
-3. (AI 사용 시) 프로젝트 설정 → 스크립트 속성에 `GEMINI_API_KEY` 또는 `OPENAI_API_KEY` 추가.
+3. (AI 사용 시) 프로젝트 설정 → 스크립트 속성에 `GROQ_API_KEY` (또는 `GEMINI_API_KEY` / `OPENAI_API_KEY`) 추가 → 앱 설정 → AI 비서에서 같은 제공자 선택.
 4. 배포 → 새 배포 → 웹 앱 (실행: 나 / 액세스: 모든 사용자) → URL 복사.
 5. 앱 **Settings → Google 동기화** 에 URL과 토큰 입력 → 연결 테스트 → 연결하기.
 
@@ -62,5 +62,5 @@ apps-script/   Code.gs (Sheets/Drive/Calendar/AI 프록시)
 
 - **데이터 흐름**: 입력 → IndexedDB → UI 즉시 반영 → `syncQueue` → 온라인일 때 Apps Script로 업로드/내려받기 (레코드 단위 last-write-wins).
 - **필기**: stroke를 JSON(좌표 + 압력)으로 저장하고 썸네일 PNG를 따로 만듭니다. Pencil이 감지되면 손가락은 스크롤로만 동작합니다(손바닥 오입력 방지).
-- **AI 이나**: 빠른 작업은 기기 안에서 계산합니다. 데이터를 바꾸는 작업은 항상 [반영]/[취소] 확인 후에만 실행됩니다. 외부 AI(Gemini/OpenAI)는 Apps Script 프록시를 거치며, 현재 화면과 관련된 일부 텍스트만 보냅니다. API 키는 프런트엔드에 두지 않습니다.
+- **AI 이나**: 빠른 작업은 기기 안에서 계산합니다. 데이터를 바꾸는 작업은 항상 [반영]/[취소] 확인 후에만 실행됩니다. 외부 AI(Groq/Gemini/OpenAI)는 Apps Script 프록시를 거치며, 현재 화면과 관련된 일부 텍스트만 보냅니다. API 키는 프런트엔드에 두지 않습니다.
 - **AI 캐릭터**: `public/aichatbotseat.png` (4열×2행 sprite). 표정 매핑과 얼굴 자르기 비율은 `src/components/assistant/sprite.ts`에서 조정합니다.

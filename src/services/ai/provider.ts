@@ -13,7 +13,7 @@ export interface AIContext {
 
 /**
  * AI 제공자 어댑터. API 키는 프런트엔드에 두지 않는다.
- * Gemini/OpenAI 호출은 Apps Script가 PropertiesService에 저장된 키로 대신 수행한다.
+ * Groq/Gemini/OpenAI 호출은 Apps Script가 PropertiesService에 저장된 키로 대신 수행한다.
  */
 export interface AIProvider {
   readonly id: AIProviderId;
@@ -31,7 +31,7 @@ const SYSTEM = [
 
 class AppsScriptProxyProvider implements AIProvider {
   constructor(
-    readonly id: 'gemini' | 'openai',
+    readonly id: 'groq' | 'gemini' | 'openai',
     readonly label: string,
     private model?: string,
   ) {}
@@ -63,6 +63,8 @@ export const localProvider: AIProvider = {
 
 export function getAIProvider(s: Settings): AIProvider {
   switch (s.ai.provider) {
+    case 'groq':
+      return new AppsScriptProxyProvider('groq', 'Groq (Apps Script 경유)', s.ai.model);
     case 'gemini':
       return new AppsScriptProxyProvider('gemini', 'Gemini (Apps Script 경유)', s.ai.model);
     case 'openai':

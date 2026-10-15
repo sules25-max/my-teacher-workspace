@@ -45,7 +45,7 @@ export interface Semester {
   end: string;
 }
 
-export type AIProviderId = 'local' | 'gemini' | 'openai';
+export type AIProviderId = 'local' | 'groq' | 'gemini' | 'openai';
 
 export interface Settings {
   id: 'main';
