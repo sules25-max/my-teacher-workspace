@@ -16,6 +16,7 @@ import { runSync, getSyncAdapter } from '../services/sync/syncEngine';
 import { AppsScriptSyncAdapter } from '../services/sync/adapter';
 import { backupFileName, downloadJSON, exportStructureOnly, exportWorkspace, importWorkspace, startNewAcademicYear, validateExport } from '../services/backup';
 import { getAIProvider } from '../services/ai/provider';
+import { callAppsScript } from '../services/google/appsScriptClient';
 import { PasteConnectCode, ShareConnection } from '../components/common/DeviceConnect';
 
 type Tab = 'basic' | 'periods' | 'timetable' | 'curriculum' | 'calendar' | 'sync' | 'ai' | 'backup';
@@ -592,8 +593,43 @@ function AISettings({ s }: { s: Settings }) {
       )}
       {s.ai.provider !== 'local' && <p className="muted">고른 AI가 안 되면(키 없음 · 한도 초과 · 장애) 스크립트 속성에 키가 있는 다른 AI로 자동으로 넘어가요. 순서: 고른 AI → Groq → Gemini → OpenAI</p>}
       <p className="chip">AI API 상태: {status}</p>
+      {s.sync.mode === 'appsScript' && <AITestButton />}
       <p className="muted">API 키는 앱 코드나 이 기기에 저장하지 않아요. Apps Script 프로젝트 설정 → 스크립트 속성(PropertiesService)에 GROQ_API_KEY · GEMINI_API_KEY · OPENAI_API_KEY 중 쓰는 것을 넣어 주세요.</p>
     </>
+  );
+}
+
+/** Apps Script의 testAI를 앱에서 바로 실행해 AI 키 · 모델 상태를 보여 준다 */
+function AITestButton() {
+  const [busy, setBusy] = useState(false);
+  const [lines, setLines] = useState<string[] | null>(null);
+  return (
+    <div className="ai-test">
+      <button
+        className="btn"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setLines(null);
+          try {
+            const r = await callAppsScript<{ lines: string[] }>('aiTest', {}, undefined, 90000);
+            setLines(r.lines);
+          } catch (e) {
+            const msg = (e as Error).message;
+            setLines([msg.includes('알 수 없는 요청') ? 'Apps Script가 예전 코드예요. 최신 Code.gs를 붙여 넣고 새 버전으로 배포해 주세요.' : msg]);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy ? 'AI 확인 중… (최대 1분)' : 'AI 연결 테스트'}
+      </button>
+      {lines && (
+        <pre className="ai-test__log" aria-live="polite">
+          {lines.join('\n')}
+        </pre>
+      )}
+    </div>
   );
 }
 

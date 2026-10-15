@@ -1848,3 +1848,21 @@ button.archive-row:hover {
 .wizard__paste .paste-code {
   margin-top: var(--s2);
 }
+
+.ai-test {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+.ai-test__log {
+  width: 100%;
+  margin: 0;
+  padding: var(--s3);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

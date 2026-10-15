@@ -91,6 +91,9 @@ var ACTIONS = {
   aiChat: function (p) {
     return aiChat(p);
   },
+  aiTest: function () {
+    return { lines: testAI() };
+  },
   // 역할별 API (다른 클라이언트나 자동화에서 쓰기 쉽도록 제공)
   getTodayPlan: function (p) {
     return getTodayPlan(p.date);
@@ -547,24 +550,30 @@ function errMsg_(e) {
  * 결과(성공 모델 또는 오류 원인)를 실행 로그에 남긴다. 키 값은 로그에 남기지 않는다.
  */
 function testAI() {
+  var lines = [];
+  var log = function (m) {
+    lines.push(m);
+    Logger.log(m);
+  };
   AI_ORDER.forEach(function (id) {
     var key = aiKey_(id);
     if (!key) {
-      Logger.log(id + ': 키 없음 (' + AI_PROVIDERS[id].keyName + ')');
+      log(id + ': 키 없음 (' + AI_PROVIDERS[id].keyName + ')');
       return;
     }
     try {
       var r = callWithModelRecovery_(id, key, '', '한 단어로만 답해.', '', [{ role: 'user', content: '안녕?' }]);
-      Logger.log(id + ': ✓ 성공 · 모델 ' + r.model + ' · 답: ' + String(r.text).slice(0, 40));
+      log(id + ': ✓ 성공 · 모델 ' + r.model + ' · 답: ' + String(r.text).slice(0, 40));
     } catch (e) {
-      Logger.log(id + ': ✗ 실패 · ' + errMsg_(e));
+      log(id + ': ✗ 실패 · ' + errMsg_(e));
       try {
-        Logger.log('   사용 가능한 모델 예: ' + listModels_(id, key).slice(0, 8).join(', '));
+        log('   사용 가능한 모델 예: ' + listModels_(id, key).slice(0, 8).join(', '));
       } catch (e2) {
-        Logger.log('   모델 목록도 실패: ' + errMsg_(e2));
+        log('   모델 목록도 실패: ' + errMsg_(e2));
       }
     }
   });
+  return lines;
 }
 
 // ---------------------------------------------------------------- 도우미
