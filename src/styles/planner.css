@@ -1,0 +1,524 @@
+/* ---------- 주간 플래너: 다이어리 내지 ---------- */
+.planner-paper {
+  position: relative;
+  padding: var(--s3);
+  background: var(--surface);
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 0 var(--blue-light);
+}
+/* 바인더 구멍 */
+.planner-paper::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -9px;
+  width: 120px;
+  height: 16px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at 12px 8px, var(--paper) 5px, var(--navy) 5.5px, var(--navy) 7px, transparent 7.5px) 0 0 / 40px 16px repeat-x;
+}
+.planner {
+  display: grid;
+  border-top: 1.5px solid var(--border);
+  border-left: 1.5px solid var(--border);
+}
+.planner > * {
+  border-right: 1.5px solid var(--border);
+  border-bottom: 1.5px solid var(--border);
+}
+.planner__corner {
+  background: var(--surface-blue);
+}
+.planner__day {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--surface-blue);
+}
+.planner__wd {
+  font-size: var(--fs-lg);
+}
+.planner__date {
+  color: var(--muted);
+}
+.planner__day.is-today {
+  background: var(--navy);
+  color: #fff;
+}
+.planner__day.is-today .planner__date {
+  color: var(--yellow);
+}
+.planner__day.is-holiday .planner__wd,
+.planner__day.is-holiday .planner__date {
+  color: var(--pink);
+}
+.planner__hol {
+  font-size: var(--fs-xs);
+  color: var(--pink);
+  width: 100%;
+}
+.planner__period {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  padding: 6px 8px;
+  background: repeating-linear-gradient(-45deg, var(--surface) 0 6px, var(--surface-blue) 6px 8px);
+  font-size: var(--fs-md);
+}
+.planner__grades,
+.planner__time {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+.planner__cell {
+  min-height: 92px;
+  padding: 5px;
+  min-width: 0;
+}
+.planner__cell.is-today {
+  background: #f8fcff;
+}
+
+.lesson-cell {
+  position: relative;
+  height: 100%;
+  min-height: 80px;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--surface-blue);
+  transition:
+    transform var(--t-hover) var(--ease-out),
+    box-shadow var(--t-hover);
+}
+.lesson-cell[data-grade='3'] {
+  background: #eaf6fc;
+}
+.lesson-cell[data-grade='4'] {
+  background: #fff6e8;
+}
+.lesson-cell[data-grade='5'] {
+  background: #f0f0ff;
+}
+.lesson-cell[data-grade='6'] {
+  background: #ecf8f1;
+}
+.lesson-cell[data-grade='1'],
+.lesson-cell[data-grade='2'] {
+  background: #fff0f3;
+}
+.lesson-cell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 var(--navy);
+}
+.lesson-cell.is-unplanned {
+  border-style: dashed;
+  border-color: var(--blue);
+  background: var(--surface);
+}
+.lesson-cell.is-done {
+  background: var(--surface);
+  border-color: var(--blue);
+}
+.lesson-cell.is-done .lesson-cell__lesson,
+.lesson-cell.is-done .lesson-cell__class {
+  color: var(--muted);
+}
+.lesson-cell.is-missed {
+  border-color: var(--orange);
+}
+.lesson-cell__main {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+  min-height: 76px;
+  padding: 7px 34px 7px 9px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  overflow: hidden;
+}
+.lesson-cell__class {
+  font-size: 1.05rem;
+}
+.lesson-cell__lesson {
+  font-size: var(--fs-sm);
+  line-height: 1.25;
+}
+.lesson-cell__session {
+  font-size: var(--fs-xs);
+  color: var(--navy-soft);
+}
+.lesson-cell__hint {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.lesson-cell__memo {
+  margin-top: 2px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lesson-cell__check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: var(--line) solid var(--navy);
+  border-radius: 6px;
+  background: var(--surface);
+  color: #fff;
+}
+/* 터치 영역은 44px로 키운다 */
+.lesson-cell__check::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+.lesson-cell__check[aria-pressed='true'] {
+  background: var(--navy);
+}
+.lesson-cell--empty {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+  border: 1.5px dashed transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: transparent;
+}
+.lesson-cell--empty:hover,
+.lesson-cell--empty:focus-visible {
+  border-color: var(--border);
+  color: var(--muted);
+}
+@media (hover: none) {
+  .lesson-cell--empty {
+    color: var(--paper-grid);
+  }
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: var(--s3);
+  padding: 10px 14px;
+  border: 1.5px dashed var(--pink);
+  border-radius: var(--radius);
+  background: #fff8f9;
+}
+
+.week-mobile {
+  display: none;
+}
+@media (max-width: 767px) {
+  .planner-paper {
+    display: none;
+  }
+  .week-mobile {
+    display: grid;
+    gap: var(--s3);
+  }
+  .week-mobile__days {
+    width: 100%;
+  }
+  .week-mobile__days button {
+    flex: 1;
+  }
+}
+.day-list {
+  display: grid;
+  gap: var(--s2);
+}
+.day-list li {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: var(--s2);
+  align-items: stretch;
+}
+.day-list__period {
+  display: grid;
+  align-content: center;
+  font-size: var(--fs-sm);
+  line-height: 1.2;
+}
+.day-list__period .muted {
+  font-size: 0.72rem;
+}
+.day-list .lesson-cell--empty {
+  border-color: var(--paper-grid);
+  color: var(--muted);
+  min-height: 56px;
+}
+.day-list .lesson-cell,
+.day-list .lesson-cell__main {
+  min-height: 60px;
+}
+
+/* ---------- 수업 카드 ---------- */
+.lesson-card {
+  display: grid;
+  gap: var(--s4);
+}
+.lesson-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.lesson-card__class {
+  font-size: var(--fs-xl);
+}
+.lesson-card__section {
+  display: grid;
+  gap: var(--s2);
+}
+.lesson-card__section .section-title {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.lesson-card__lesson {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s3);
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sticker);
+}
+.lesson-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s3);
+  align-items: end;
+}
+@media (max-width: 420px) {
+  .lesson-picker {
+    grid-template-columns: 1fr;
+  }
+}
+.session-pick {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.session-pick__btn {
+  width: var(--tap);
+  height: var(--tap);
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: var(--font-title);
+  font-size: var(--fs-lg);
+}
+.session-pick__btn.is-active {
+  background: var(--navy);
+  color: #fff;
+}
+.session-pick__btn:disabled {
+  opacity: 0.35;
+}
+.session-pick__of {
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.suggest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 6px 6px 12px;
+  border: 1.5px dashed var(--orange);
+  border-radius: var(--radius);
+  background: #fffaf0;
+}
+.suggest span {
+  flex: 1;
+  min-width: 150px;
+}
+.complete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 16px 0 10px;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  font-family: var(--font-title);
+  font-size: var(--fs-md);
+  box-shadow: 0 3px 0 var(--navy);
+  white-space: nowrap;
+  transition: transform var(--t-hover) var(--ease-out);
+}
+.complete-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--navy);
+}
+.complete-btn__box {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: var(--line) solid var(--navy);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.complete-btn.is-done {
+  background: var(--blue-light);
+}
+.complete-btn.is-done .complete-btn__box {
+  background: var(--navy);
+  color: #fff;
+  animation: check-pop 260ms var(--ease-out);
+}
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: var(--s2);
+}
+.copy-box {
+  padding: var(--s3);
+  border: 1.5px dashed var(--blue);
+  border-radius: var(--radius-lg);
+  background: var(--surface-blue);
+}
+.copy-box__hint {
+  font-size: var(--fs-sm);
+}
+.btn.is-copied {
+  background: #fffaf0;
+}
+.lesson-card__danger {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--s2);
+  border-top: var(--line) dashed var(--border);
+  color: var(--muted);
+}
+
+/* ---------- 체크리스트 / 첨부 ---------- */
+.checklist {
+  display: grid;
+  gap: 6px;
+}
+.checklist__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px dashed var(--paper-grid);
+}
+.checklist__item .check {
+  flex: 1;
+}
+.checklist__remove {
+  opacity: 0.4;
+}
+.checklist__remove:hover {
+  opacity: 1;
+}
+.checklist__presets {
+  gap: 6px;
+}
+.checklist__presets .chip {
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.attach {
+  display: grid;
+  gap: var(--s2);
+}
+.attach__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.attach__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: var(--s2);
+}
+.attach__tile {
+  position: relative;
+}
+.attach__open {
+  display: grid;
+  width: 100%;
+  gap: 2px;
+  padding: 6px;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--surface);
+  text-align: left;
+}
+.attach__open img,
+.attach__icon {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--surface-blue);
+}
+.attach__icon {
+  display: grid;
+  place-items: center;
+  color: var(--navy-soft);
+}
+.attach__name {
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attach__meta {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.attach__remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: var(--line) solid var(--navy);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.attach__full {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+  min-height: 0;
+  flex: 1;
+}
+.attach__frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+}
+.ink-modal-body {
+  flex: 1;
+  min-height: 0;
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+}

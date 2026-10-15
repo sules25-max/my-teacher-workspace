@@ -1,0 +1,180 @@
+.ink {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  outline: none;
+  min-width: 0;
+}
+.ink--fill {
+  height: 100%;
+}
+.ink--fill .ink__scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.ink__page-wrap {
+  width: 100%;
+}
+.ink__page {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background-color: #fff;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sticker);
+}
+/* 배경 패턴: 문서 좌표 40px 간격을 화면 배율에 맞춰 그린다 */
+.ink-bg--lined {
+  background-image: linear-gradient(transparent calc(40px * var(--ink-scale) - 1px), var(--paper-grid) 0);
+  background-size: 100% calc(40px * var(--ink-scale));
+}
+.ink-bg--grid {
+  background-image:
+    linear-gradient(var(--paper-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+  background-size: calc(32px * var(--ink-scale)) calc(32px * var(--ink-scale));
+}
+.ink-bg--dot {
+  background-image: radial-gradient(circle, #b9d7e6 1.2px, transparent 1.6px);
+  background-size: calc(32px * var(--ink-scale)) calc(32px * var(--ink-scale));
+}
+.ink__canvas {
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 2;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.ink__img {
+  position: absolute;
+  z-index: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ink__img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.ink__img.is-selectable {
+  cursor: move;
+  touch-action: none;
+}
+.ink__img.is-selectable:hover {
+  outline: 2px dashed var(--blue);
+}
+.ink__img.is-selected {
+  outline: 2px dashed var(--pink);
+  outline-offset: 2px;
+}
+.ink__handle {
+  position: absolute;
+  right: -14px;
+  bottom: -14px;
+  width: 28px;
+  height: 28px;
+  border: var(--line) solid var(--navy);
+  border-radius: 6px;
+  background: var(--pink);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.ink__marquee {
+  position: absolute;
+  z-index: 4;
+  border: 1.5px dashed var(--pink);
+  background: rgba(255, 102, 128, 0.06);
+  pointer-events: none;
+}
+.ink__deselect {
+  position: sticky;
+  top: 8px;
+  left: 8px;
+  z-index: 5;
+  margin: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--yellow);
+}
+.ink-loading {
+  padding: var(--s5);
+}
+
+.ink-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--shadow-sticker);
+}
+.ink-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 6px;
+  border-right: 1.5px dashed var(--border);
+}
+.ink-toolbar__group:last-child {
+  border-right: 0;
+}
+.ink-toolbar__end {
+  margin-left: auto;
+}
+.ink-toolbar .icon-btn:disabled {
+  opacity: 0.3;
+}
+.swatch {
+  width: 32px;
+  height: 32px;
+  margin: 6px 2px;
+  border: var(--line) solid var(--navy);
+  border-radius: 50%;
+  background: var(--swatch);
+}
+.swatch.is-active {
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 5px var(--navy);
+}
+.width-dot {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: var(--tap);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+}
+.width-dot span {
+  border-radius: 50%;
+  background: var(--navy);
+}
+.width-dot.is-active {
+  background: var(--blue-light);
+}
+@media (max-width: 767px) {
+  .ink-toolbar {
+    gap: 2px;
+  }
+  .ink-toolbar__group {
+    padding-right: 2px;
+  }
+  .ink-toolbar__end {
+    margin-left: 0;
+  }
+}
