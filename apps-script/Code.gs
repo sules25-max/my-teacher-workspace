@@ -371,17 +371,19 @@ function parseDate_(iso) {
 
 var AI_PROVIDERS = {
   groq: { keyName: 'GROQ_API_KEY', model: 'llama-3.3-70b-versatile' },
-  gemini: { keyName: 'GEMINI_API_KEY', model: 'gemini-2.5-flash' },
+  gemini: { keyName: 'GEMINI_API_KEY', model: 'gemini-flash-latest' },
   openai: { keyName: 'OPENAI_API_KEY', model: 'gpt-4o-mini' },
 };
 var AI_ORDER = ['groq', 'gemini', 'openai'];
+var OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'; // Groq는 OpenAI 호환 API
 
 /**
  * 고른 AI를 먼저 쓰고, 키가 없거나 실패(한도 초과·장애 등)하면
  * 스크립트 속성에 키가 있는 다른 AI로 차례대로 넘어간다.
+ * 모델 이름이 종료·변경된 경우에는 사용 가능한 모델을 조회해 자동으로 바꿔 다시 시도한다.
  */
 function aiChat(p) {
-  var props = PropertiesService.getScriptProperties();
   var system = String(p.system || '');
   var context = String(p.context || '').slice(0, 6000);
   var messages = (p.messages || []).slice(-8);
@@ -390,25 +392,94 @@ function aiChat(p) {
   var errors = [];
   for (var i = 0; i < chain.length; i++) {
     var id = chain[i];
-    var cfg = AI_PROVIDERS[id];
-    var key = props.getProperty(cfg.keyName);
+    var key = aiKey_(id);
     if (!key) continue;
-    // 사용자가 정한 모델명은 처음 고른 AI에만 적용하고, 대체 AI는 기본 모델을 쓴다
-    var model = id === first && p.model ? p.model : cfg.model;
     try {
-      var text = id === 'gemini'
-        ? geminiChat_(key, model, system, context, messages)
-        : openAICompatChat_(id === 'groq' ? GROQ_URL : OPENAI_URL, cfg.keyName, key, model, system, context, messages);
-      return { text: text, provider: id, fallback: id !== first };
+      var r = callWithModelRecovery_(id, key, id === first ? p.model : '', system, context, messages);
+      return { text: r.text, provider: id, model: r.model, fallback: id !== first };
     } catch (e) {
-      errors.push(id + ': ' + (e && e.message ? e.message : e));
+      errors.push(id + ': ' + errMsg_(e));
     }
   }
   throw new Error(errors.length ? 'AI 호출 실패 (' + errors.join(' / ') + ')' : '스크립트 속성에 GROQ_API_KEY · GEMINI_API_KEY · OPENAI_API_KEY 중 하나도 없어요.');
 }
 
+function aiKey_(id) {
+  var v = PropertiesService.getScriptProperties().getProperty(AI_PROVIDERS[id].keyName);
+  return v ? String(v).replace(/\s+/g, '') : ''; // 붙여 넣을 때 섞인 공백·줄바꿈 제거
+}
+
+function callWithModelRecovery_(id, key, userModel, system, context, messages) {
+  var cache = CacheService.getScriptCache();
+  var model = userModel || cache.get('ai_model_' + id) || AI_PROVIDERS[id].model;
+  try {
+    return { text: callProvider_(id, key, model, system, context, messages), model: model };
+  } catch (e) {
+    if (!looksLikeModelError_(e)) throw e;
+    var picked = '';
+    try {
+      picked = discoverModel_(id, key, model);
+    } catch (e2) {
+      throw e; // 목록 조회도 실패하면(키 오류 등) 원래 오류를 보여 준다
+    }
+    if (!picked) throw e;
+    cache.put('ai_model_' + id, picked, 21600);
+    return { text: callProvider_(id, key, picked, system, context, messages), model: picked };
+  }
+}
+
+function callProvider_(id, key, model, system, context, messages) {
+  var text = id === 'gemini'
+    ? geminiChat_(key, model, system, context, messages)
+    : openAICompatChat_(id === 'groq' ? GROQ_URL : OPENAI_URL, key, model, system, context, messages);
+  if (!text || !String(text).trim()) throw new Error('빈 답변 (' + model + ')');
+  return text;
+}
+
+function looksLikeModelError_(e) {
+  return /model|decommission|not found|not supported|does not exist|404|400/i.test(errMsg_(e));
+}
+
+/** 제공자의 모델 목록에서 대화용으로 쓸 만한 모델을 고른다. */
+function discoverModel_(id, key, exclude) {
+  var names = listModels_(id, key).filter(function (n) { return n !== exclude; });
+  var prefs = {
+    groq: [/^llama-3\.3-70b/, /gpt-oss-120b/, /llama-4/, /70b/, /gpt-oss/, /llama/, /qwen/, /./],
+    gemini: [/^gemini-flash-latest$/, /^gemini-[\d.]+-flash$/, /^gemini-[\d.]+-flash-lite$/, /^gemini-[\d.]+-pro$/, /flash/, /gemini/],
+    openai: [/^gpt-4o-mini$/, /^gpt-4\.1-mini$/, /mini$/, /^gpt-/],
+  }[id];
+  for (var i = 0; i < prefs.length; i++) {
+    for (var j = 0; j < names.length; j++) if (prefs[i].test(names[j])) return names[j];
+  }
+  return '';
+}
+
+function listModels_(id, key) {
+  var url, headers;
+  if (id === 'gemini') {
+    url = 'https://generativelanguage.googleapis.com/v1beta/models?pageSize=200';
+    headers = { 'x-goog-api-key': key };
+  } else {
+    url = id === 'groq' ? 'https://api.groq.com/openai/v1/models' : 'https://api.openai.com/v1/models';
+    headers = { Authorization: 'Bearer ' + key };
+  }
+  var res = UrlFetchApp.fetch(url, { headers: headers, muteHttpExceptions: true });
+  var j = parseJson_(res, id + ' 모델 목록');
+  if (id === 'gemini') {
+    return (j.models || [])
+      .filter(function (m) { return (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0; })
+      .map(function (m) { return String(m.name).replace(/^models\//, ''); })
+      .filter(function (n) { return !/(tts|image|embedding|live|audio|vision|aqa|learnlm|preview|exp|robotics|computer)/.test(n); })
+      .sort().reverse(); // 숫자가 큰(새) 버전 먼저
+  }
+  return (j.data || [])
+    .filter(function (m) { return m.active !== false; })
+    .map(function (m) { return String(m.id); })
+    .filter(function (n) { return !/(whisper|tts|guard|embed|playai|orpheus|distil|compound|realtime|audio|transcribe|image|dall|moderation|search)/i.test(n); })
+    .sort().reverse();
+}
+
 function geminiChat_(key, model, system, context, messages) {
-  if (!key) throw new Error('스크립트 속성에 GEMINI_API_KEY가 없어요.');
   var contents = messages.map(function (m) {
     return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] };
   });
@@ -420,24 +491,19 @@ function geminiChat_(key, model, system, context, messages) {
     payload: JSON.stringify({
       system_instruction: { parts: [{ text: system + (context ? '\n\n[참고 자료]\n' + context : '') }] },
       contents: contents,
-      generationConfig: { maxOutputTokens: 800, temperature: 0.4 },
+      // 생각(thinking) 토큰이 한도를 다 쓰면 답이 비므로 넉넉히 준다
+      generationConfig: { maxOutputTokens: 4096, temperature: 0.4 },
     }),
   });
-  var j = JSON.parse(res.getContentText());
-  if (res.getResponseCode() >= 300) throw new Error((j.error && j.error.message) || 'Gemini 오류');
+  var j = parseJson_(res, 'Gemini');
   var parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
   return parts
-    .map(function (x) {
-      return x.text || '';
-    })
+    .filter(function (x) { return !x.thought; })
+    .map(function (x) { return x.text || ''; })
     .join('');
 }
 
-var OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'; // Groq는 OpenAI 호환 API
-
-function openAICompatChat_(url, keyName, key, model, system, context, messages) {
-  if (!key) throw new Error('스크립트 속성에 ' + keyName + '가 없어요.');
+function openAICompatChat_(url, key, model, system, context, messages) {
   var msgs = [{ role: 'system', content: system + (context ? '\n\n[참고 자료]\n' + context : '') }].concat(
     messages.map(function (m) {
       return { role: m.role, content: m.content };
@@ -448,11 +514,54 @@ function openAICompatChat_(url, keyName, key, model, system, context, messages) 
     contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + key },
     muteHttpExceptions: true,
-    payload: JSON.stringify({ model: model, messages: msgs, max_tokens: 800, temperature: 0.4 }),
+    payload: JSON.stringify({ model: model, messages: msgs, max_tokens: 2048, temperature: 0.4 }),
   });
-  var j = JSON.parse(res.getContentText());
-  if (res.getResponseCode() >= 300) throw new Error((j.error && j.error.message) || 'AI 응답 오류');
-  return j.choices[0].message.content;
+  var j = parseJson_(res, model);
+  return j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : '';
+}
+
+/** 오류 응답이 HTML(차단 페이지 등)이어도 원인을 읽을 수 있게 HTTP 코드와 앞부분을 남긴다. */
+function parseJson_(res, label) {
+  var code = res.getResponseCode();
+  var body = res.getContentText();
+  var j = null;
+  try {
+    j = JSON.parse(body);
+  } catch (e) {}
+  if (code >= 300 || !j) {
+    var msg = j && j.error ? (j.error.message || JSON.stringify(j.error)) : String(body).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 160);
+    throw new Error(label + ' HTTP ' + code + ': ' + msg);
+  }
+  return j;
+}
+
+function errMsg_(e) {
+  return String(e && e.message ? e.message : e);
+}
+
+/**
+ * 진단용: 편집기에서 testAI 를 선택해 ▶ 실행하면, 키가 있는 AI마다 실제로 호출해 보고
+ * 결과(성공 모델 또는 오류 원인)를 실행 로그에 남긴다. 키 값은 로그에 남기지 않는다.
+ */
+function testAI() {
+  AI_ORDER.forEach(function (id) {
+    var key = aiKey_(id);
+    if (!key) {
+      Logger.log(id + ': 키 없음 (' + AI_PROVIDERS[id].keyName + ')');
+      return;
+    }
+    try {
+      var r = callWithModelRecovery_(id, key, '', '한 단어로만 답해.', '', [{ role: 'user', content: '안녕?' }]);
+      Logger.log(id + ': ✓ 성공 · 모델 ' + r.model + ' · 답: ' + String(r.text).slice(0, 40));
+    } catch (e) {
+      Logger.log(id + ': ✗ 실패 · ' + errMsg_(e));
+      try {
+        Logger.log('   사용 가능한 모델 예: ' + listModels_(id, key).slice(0, 8).join(', '));
+      } catch (e2) {
+        Logger.log('   모델 목록도 실패: ' + errMsg_(e2));
+      }
+    }
+  });
 }
 
 // ---------------------------------------------------------------- 도우미
