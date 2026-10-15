@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AssistantAvatar } from './AssistantAvatar';
+import { AgentScene } from '../agent/AgentScene';
 import { AssistantBubble } from './AssistantBubble';
 import { AssistantPanel } from './AssistantPanel';
 import type { AssistantExpression } from './sprite';
@@ -55,7 +55,9 @@ export function AssistantFloatingButton() {
 
   if (!s.assistant.visible) return null;
 
-  const size = mobile ? 50 : 68;
+  // 작은 방(장면) 크기: CSS .agent-scene--mini 와 맞춘다
+  const size = mobile ? 104 : 148;
+  const sceneH = Math.round(size * 0.75) + 20; // 장면 + 아래 상태 줄
   const style = offset ? { transform: `translate(${offset.x}px, ${offset.y}px)` } : undefined;
 
   return (
@@ -84,7 +86,7 @@ export function AssistantFloatingButton() {
             const maxX = 0;
             const minX = -(window.innerWidth - size - 24);
             const maxY = 0;
-            const minY = -(window.innerHeight - size - 140);
+            const minY = -(window.innerHeight - sceneH - 140);
             setOffset({ x: Math.min(maxX, Math.max(minX, d.ox + dx)), y: Math.min(maxY, Math.max(minY, d.oy + dy)) });
           }}
           onPointerUp={() => {
@@ -108,7 +110,7 @@ export function AssistantFloatingButton() {
             }
           }}
         >
-          <AssistantAvatar expression={expression} size={size} />
+          <AgentScene size="mini" />
           <span className="ai-float__dot" aria-hidden="true" />
         </button>
       </div>

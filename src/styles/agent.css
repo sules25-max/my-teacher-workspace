@@ -1,0 +1,210 @@
+/* ---------- AI 이나의 방 ---------- */
+.agent-scene {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius-lg);
+  background: var(--blue-light);
+  isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.agent-scene--large {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.agent-scene--mini {
+  width: 148px;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
+}
+.agent-scene__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 60%;
+  opacity: 0;
+  transition: opacity 450ms ease;
+}
+.agent-scene__bg.is-shown {
+  opacity: 1;
+}
+.agent-scene__track {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform;
+}
+.agent-scene__char {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 3px 0 rgba(21, 42, 75, 0.25));
+}
+.agent-scene__char img:first-child {
+  display: block;
+  height: 100%;
+  width: auto;
+  transform-origin: 50% 100%;
+}
+.agent-scene__bubble {
+  position: absolute;
+  top: -10%;
+  right: -26%;
+  height: 30%;
+  width: auto;
+  animation: agent-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 포즈별 작은 움직임: 숨쉬기 · 통통 · 졸기 · 멀어지는 뒷모습 */
+.pose--idle img:first-child,
+.pose--sit img:first-child,
+.pose--rest img:first-child,
+.pose--work img:first-child,
+.pose--teach img:first-child,
+.pose--meeting img:first-child,
+.pose--talk img:first-child,
+.pose--think img:first-child {
+  animation: agent-breathe 2.6s ease-in-out infinite;
+}
+.pose--joy img:first-child {
+  animation: agent-hop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) infinite alternate;
+}
+.pose--surprised img:first-child {
+  animation: agent-shake 0.35s ease-in-out 3;
+}
+.pose--doze img:first-child {
+  animation: agent-doze 3.4s ease-in-out infinite;
+}
+.pose--walk-away img:first-child {
+  animation: agent-away 6s linear infinite;
+}
+.is-walking img:first-child {
+  animation: agent-step 0.23s ease-in-out infinite alternate;
+}
+@keyframes agent-breathe {
+  50% {
+    transform: translateY(-1.2%) scaleY(1.01);
+  }
+}
+@keyframes agent-hop {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-7%);
+  }
+}
+@keyframes agent-shake {
+  25% {
+    transform: translateX(-3%);
+  }
+  75% {
+    transform: translateX(3%);
+  }
+}
+@keyframes agent-doze {
+  50% {
+    transform: translateY(1.5%) rotate(-1deg);
+  }
+}
+@keyframes agent-away {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-34%) scale(0.55);
+    opacity: 0;
+  }
+}
+@keyframes agent-step {
+  to {
+    transform: translateY(-2%);
+  }
+}
+@keyframes agent-pop {
+  from {
+    transform: scale(0.3) translateY(20%);
+    opacity: 0;
+  }
+}
+
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius-lg);
+  background: #fff;
+}
+.agent-card--mini {
+  width: 148px;
+  border-radius: 12px;
+}
+.agent-card .agent-scene {
+  border: 0;
+  border-radius: 0;
+}
+.agent-card--mini .agent-scene--mini {
+  width: 100%;
+}
+.agent-scene__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  padding: 6px 10px 7px;
+  border-top: var(--line) solid var(--navy);
+  background: #fff;
+}
+.agent-scene__place {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.72rem;
+}
+.agent-scene__label {
+  font-size: var(--fs-md);
+}
+.agent-scene__detail {
+  font-size: var(--fs-xs);
+  color: var(--navy-soft);
+}
+.agent-scene__mini-label {
+  display: block;
+  padding: 2px 6px;
+  border-top: 1.5px solid var(--navy);
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-card.is-reacting {
+  box-shadow: 0 0 0 3px var(--yellow);
+}
+
+@media (max-width: 767px) {
+  .agent-card--mini {
+    width: 104px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-scene__char img:first-child,
+  .agent-scene__bubble {
+    animation: none !important;
+  }
+}

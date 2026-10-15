@@ -331,3 +331,23 @@
   color: var(--muted);
   text-decoration: line-through;
 }
+
+/* 패널 위쪽: AI 이나의 방 */
+.ai-panel__scene {
+  padding: 8px 10px 0;
+  background: #fff;
+}
+.ai-panel__scene .agent-scene--large {
+  aspect-ratio: 16 / 8;
+}
+@media (max-height: 700px) {
+  .ai-panel__scene .agent-scene--large {
+    aspect-ratio: 16 / 6;
+  }
+}
+/* 떠 있는 버튼이 이제 작은 방(장면)이라 그림자 대신 테두리 강조 */
+.ai-float__btn {
+  filter: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 0 var(--navy);
+}

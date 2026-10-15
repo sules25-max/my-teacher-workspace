@@ -9,6 +9,7 @@ import type {
   PageGroup,
   ProgressEntry,
   Settings,
+  SlotOverride,
   SyncQueueItem,
   Task,
   Tombstone,
@@ -30,6 +31,7 @@ export class WorkspaceDB extends Dexie {
   attachments!: Table<Attachment, string>;
   syncQueue!: Table<SyncQueueItem, string>;
   tombstones!: Table<Tombstone, string>;
+  slotOverrides!: Table<SlotOverride, string>;
 
   constructor() {
     super('my-teacher-workspace');
@@ -47,6 +49,10 @@ export class WorkspaceDB extends Dexie {
       attachments: 'id, ownerId, updatedAt',
       syncQueue: 'key, at',
       tombstones: 'key',
+    });
+    // v2: 주별 시간표 변경(반 바꾸기 · 휴강)
+    this.version(2).stores({
+      slotOverrides: 'id, date, [date+periodId]',
     });
   }
 }

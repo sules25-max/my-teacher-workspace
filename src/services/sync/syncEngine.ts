@@ -10,6 +10,7 @@ import { onLocalChange, setSyncState } from './syncStatus';
 // 아직 올라가지 않은 로컬 변경이 있는 레코드는 서버 값으로 덮어쓰지 않는다.
 
 const SYNC_TABLES: SyncTable[] = [
+  'slotOverrides',
   'lessons',
   'progress',
   'events',

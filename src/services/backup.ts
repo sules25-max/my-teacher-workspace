@@ -9,7 +9,7 @@ import { notifyLocalChange } from './sync/syncStatus';
 
 // 전체 워크스페이스 JSON 내보내기 / 가져오기 / 학년도 복제
 
-const TABLES: SyncTable[] = ['lessons', 'progress', 'events', 'tasks', 'notes', 'meetings', 'pages', 'pageGroups', 'inkDocs', 'attachments'];
+const TABLES: SyncTable[] = ['slotOverrides', 'lessons', 'progress', 'events', 'tasks', 'notes', 'meetings', 'pages', 'pageGroups', 'inkDocs', 'attachments'];
 
 export interface WorkspaceExport {
   app: 'my-teacher-workspace';

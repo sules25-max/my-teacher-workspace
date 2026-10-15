@@ -1,6 +1,6 @@
 import { db } from './localDb';
 import * as repo from './repo';
-import type { CurriculumLesson, LessonRecord, PeriodSlot, ProgressEntry, Settings } from '../types';
+import type { CurriculumLesson, LessonRecord, PeriodSlot, ProgressEntry, Settings, SlotOverride } from '../types';
 import { classKey, parseClassKey, uuid } from '../utils/id';
 import { WEEKDAY_KO, dateOfWeekday, isoWeekday, parseISODate, startOfWeek } from '../utils/date';
 
@@ -246,12 +246,11 @@ export async function listCopySlots(s: Settings, source: LessonRecord, target: s
   const weekStart = startOfWeek(source.date);
   const weekEnd = dateOfWeekday(weekStart, 7);
   const raw = new Map<string, { date: string; periodId: string }>();
+  const ov = await loadOverrides(weekStart, weekEnd);
   for (const wd of s.weekdays) {
     for (const p of s.periods) {
-      if (s.timetable[slotKey(wd, p.id)] === target) {
-        const date = dateOfWeekday(weekStart, wd);
-        raw.set(`${date}:${p.id}`, { date, periodId: p.id });
-      }
+      const date = dateOfWeekday(weekStart, wd);
+      if (effectiveSlot(s, date, p.id, ov).classKey === target) raw.set(`${date}:${p.id}`, { date, periodId: p.id });
     }
   }
   const records = (await db.lessons.where('classKey').equals(target).toArray()).filter((r) => r.date >= weekStart && r.date <= weekEnd);
@@ -335,4 +334,44 @@ export async function markProgressUpTo(s: Settings, cls: string, lessonId: strin
   }
   if (items.length) await repo.bulkCreate<ProgressEntry>('progress', items);
   return items.length;
+}
+
+// ---------- 주별 시간표 변경 (반 바꾸기 · 휴강) ----------
+
+export type OverrideMap = Map<string, SlotOverride>;
+
+export async function loadOverrides(from: string, to: string): Promise<OverrideMap> {
+  const rows = await db.slotOverrides.where('date').between(from, to, true, true).toArray();
+  return new Map(rows.map((o) => [`${o.date}:${o.periodId}`, o]));
+}
+
+export interface EffectiveSlot {
+  classKey?: string; // 이 날짜에 실제로 수업하는 반 (휴강이면 없음)
+  regular?: string; // 정기 시간표의 반
+  override?: SlotOverride;
+  cancelled: boolean;
+}
+
+/** 정기 시간표 + 그 날짜의 변경을 합친 실제 반 */
+export function effectiveSlot(s: Settings, date: string, periodId: string, ov?: OverrideMap): EffectiveSlot {
+  const regular = s.timetable[slotKey(isoWeekday(date), periodId)];
+  const o = ov?.get(`${date}:${periodId}`);
+  if (!o) return { classKey: regular, regular, cancelled: false };
+  return { classKey: o.classKey ?? undefined, regular, override: o, cancelled: o.classKey === null };
+}
+
+/**
+ * 그 날짜의 칸만 바꾼다. classKey: 반 / null: 휴강 / undefined: 원래 시간표로.
+ * 정기 시간표와 같아지면 변경 기록을 지운다.
+ */
+export async function setSlotOverride(s: Settings, date: string, periodId: string, classKey: string | null | undefined, note?: string) {
+  const existing = await db.slotOverrides.where('[date+periodId]').equals([date, periodId]).first();
+  const regular = s.timetable[slotKey(isoWeekday(date), periodId)];
+  const restore = classKey === undefined || (classKey !== null && classKey === regular);
+  if (restore) {
+    if (existing) await repo.remove('slotOverrides', existing.id);
+    return;
+  }
+  if (existing) await repo.update<SlotOverride>('slotOverrides', existing.id, { classKey, note });
+  else await repo.create<SlotOverride>('slotOverrides', { date, periodId, classKey, note });
 }

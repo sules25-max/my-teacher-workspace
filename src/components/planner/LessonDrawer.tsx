@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check as CheckIcon, Copy, Sparkles, Trash2 } from 'lucide-react';
+import { Check as CheckIcon, Copy, Pencil, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
+import { changeSlotClass } from './slotChange';
 import { db } from '../../services/localDb';
 import * as repo from '../../services/repo';
 import { useSettings } from '../../hooks/useData';
@@ -20,11 +21,13 @@ import {
   type CopyTarget,
   periodLabel,
   setLessonCompleted,
-  slotKey,
   suggestNextFor,
   allClasses,
   periodAllowsGrade,
   inAcademicYear,
+  effectiveSlot,
+  setSlotOverride,
+  type EffectiveSlot,
   type Suggestion,
 } from '../../services/planner';
 import type { LessonRecord, Settings } from '../../types';
@@ -61,12 +64,14 @@ function LessonCard({ target }: { target: LessonTarget }) {
   const s = useSettings();
   const record = useRecord(target);
   const slot = 'recordId' in target ? null : target;
-  const timetableClass = slot ? s.timetable[slotKey(isoWeekday(slot.date), slot.periodId)] : undefined;
-  const [pickedClass, setPickedClass] = useState<string | undefined>();
-  // 설정은 비동기로 로드되므로 시간표 반은 state에 굳히지 않고 매번 계산한다
-  const cls = record?.classKey ?? pickedClass ?? slot?.classKey ?? timetableClass;
   const date = record?.date ?? slot?.date ?? '';
   const periodId = record?.periodId ?? slot?.periodId ?? '';
+  const override = useLiveQuery(async () => (date ? ((await db.slotOverrides.where('[date+periodId]').equals([date, periodId]).first()) ?? null) : null), [date, periodId]);
+  // 정기 시간표 + 이번 주 변경을 합친 이 칸의 반
+  const eff = date ? effectiveSlot(s, date, periodId, override ? new Map([[`${date}:${periodId}`, override]]) : undefined) : undefined;
+  const [pickedClass, setPickedClass] = useState<string | undefined>();
+  // 설정은 비동기로 로드되므로 시간표 반은 state에 굳히지 않고 매번 계산한다
+  const cls = record?.classKey ?? pickedClass ?? slot?.classKey ?? eff?.classKey;
 
   const creating = useRef<Promise<LessonRecord> | null>(null);
   const ensure = async (): Promise<LessonRecord> => {
@@ -80,10 +85,24 @@ function LessonCard({ target }: { target: LessonTarget }) {
     await repo.update<LessonRecord>('lessons', r.id, changes);
   };
 
-  if (record === undefined) return null;
+  if (record === undefined || override === undefined) return null;
 
   if (!cls) {
-    return <ClassPicker s={s} periodId={periodId} date={date} onPick={setPickedClass} />;
+    return (
+      <div className="stack">
+        {eff?.cancelled && (
+          <div className="notice notice--edit">
+            <span style={{ flex: 1 }}>
+              <b>이번 주 휴강</b> (원래 {eff.regular}){eff.override?.note ? ` · ${eff.override.note}` : ''}
+            </span>
+            <button className="btn btn--sm" onClick={() => void setSlotOverride(s, date, periodId, undefined)}>
+              원래대로
+            </button>
+          </div>
+        )}
+        <ClassPicker s={s} periodId={periodId} date={date} onPick={setPickedClass} />
+      </div>
+    );
   }
 
   const { grade } = parseClassKey(cls);
@@ -98,6 +117,8 @@ function LessonCard({ target }: { target: LessonTarget }) {
         </div>
         <CompleteButton s={s} record={record} onCreateNeeded={ensure} />
       </header>
+
+      <SlotChangeSection s={s} date={date} periodId={periodId} cls={cls} eff={eff} onPicked={setPickedClass} />
 
       <LessonPicker s={s} grade={grade} record={record} cls={cls} date={date} periodId={periodId} patch={patch} />
 
@@ -434,6 +455,96 @@ function CopySection({ s, record }: { s: Settings; record: LessonRecord }) {
           </div>
         )}
       </Modal>
+    </section>
+  );
+}
+
+/** 이 날짜 칸만 반을 바꾸거나 휴강으로 (정기 시간표는 그대로) */
+function SlotChangeSection({
+  s,
+  date,
+  periodId,
+  cls,
+  eff,
+  onPicked,
+}: {
+  s: Settings;
+  date: string;
+  periodId: string;
+  cls: string;
+  eff?: EffectiveSlot;
+  onPicked: (k: string | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState(eff?.override?.note ?? '');
+  const period = s.periods.find((p) => p.id === periodId);
+  const classes = allClasses(s).filter((c) => !period || periodAllowsGrade(period, c.grade));
+  const changed = !!eff?.override;
+  return (
+    <section className={cx('slot-change', changed && 'is-changed')}>
+      <button className="slot-change__toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <Pencil size={14} />
+        {changed ? (
+          <span>
+            이번 주 변경됨 · 원래 <b>{eff?.regular ?? '수업 없음'}</b>
+          </span>
+        ) : (
+          <span>이번 주만 반 바꾸기 · 휴강</span>
+        )}
+      </button>
+      {open && (
+        <div className="slot-change__body">
+          <div className="row row--wrap">
+            {classes.map((c) => (
+              <button
+                key={c.key}
+                className={cx('chip slot-change__chip', c.key === cls && 'chip--done')}
+                aria-pressed={c.key === cls}
+                onClick={async () => {
+                  if (c.key === cls) return;
+                  if (await changeSlotClass(s, date, periodId, c.key, eff?.regular, note || undefined)) {
+                    onPicked(c.key);
+                    toast(`${formatShort(date)} ${periodLabel(s, periodId)}을(를) ${c.key}(으)로 바꿨어요. (이번 주만)`);
+                  }
+                }}
+              >
+                {c.key}
+                {c.key === eff?.regular ? ' · 정기' : ''}
+              </button>
+            ))}
+          </div>
+          <div className="row">
+            <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="사유 (선택) 예) 학예회 연습, 교환 수업" aria-label="변경 사유" />
+          </div>
+          <div className="row row--wrap">
+            <button
+              className="btn btn--sm btn--pink"
+              onClick={async () => {
+                if (await changeSlotClass(s, date, periodId, null, eff?.regular, note || undefined)) {
+                  onPicked(undefined);
+                  toast('이번 주 이 칸을 휴강으로 바꿨어요.');
+                }
+              }}
+            >
+              이번 주 휴강
+            </button>
+            {changed && (
+              <button
+                className="btn btn--sm"
+                onClick={async () => {
+                  if (eff?.regular && eff.regular !== cls) {
+                    if (!(await changeSlotClass(s, date, periodId, eff.regular, eff.regular))) return;
+                  } else await setSlotOverride(s, date, periodId, undefined);
+                  onPicked(undefined);
+                  toast('정기 시간표대로 되돌렸어요.');
+                }}
+              >
+                <RotateCcw size={14} /> 원래대로 ({eff?.regular ?? '없음'})
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

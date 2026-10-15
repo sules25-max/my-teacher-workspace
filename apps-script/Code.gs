@@ -14,6 +14,7 @@
 
 var ROOT_FOLDER = 'My Teacher Workspace';
 var SHEETS = {
+  slotOverrides: 'WeeklyChanges',
   lessons: 'LessonRecords',
   progress: 'Progress34',
   events: 'MonthlyPlan',
@@ -256,6 +257,8 @@ function summarize_(table, r) {
     switch (table) {
       case 'lessons':
         return [r.date, r.classKey, r.lesson, r.session ? r.session + '차시' : '', r.completed ? '✓완료' : ''].join(' ');
+      case 'slotOverrides':
+        return [r.date, r.periodId, r.classKey ? r.classKey + '(으)로 변경' : '휴강', r.note || ''].join(' ');
       case 'progress':
         return [r.classKey, r.lesson, r.session + '차시', r.date].join(' ');
       case 'events':

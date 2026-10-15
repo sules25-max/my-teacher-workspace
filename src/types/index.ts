@@ -246,7 +246,16 @@ export interface Attachment extends BaseRecord {
   ownerId?: string;
 }
 
+/** 특정 날짜의 칸만 정기 시간표와 다르게: 반 변경(classKey) 또는 휴강(null) */
+export interface SlotOverride extends BaseRecord {
+  date: string;
+  periodId: string;
+  classKey: string | null;
+  note?: string;
+}
+
 export type SyncTable =
+  | 'slotOverrides'
   | 'lessons'
   | 'progress'
   | 'events'

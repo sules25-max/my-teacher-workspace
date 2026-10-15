@@ -12,7 +12,8 @@ import {
   inAcademicYear,
   periodLabel,
   setLessonCompleted,
-  slotKey,
+  effectiveSlot,
+  loadOverrides,
   suggestNextFor,
 } from '../planner';
 import { searchAll, KIND_LABEL } from '../search';
@@ -177,6 +178,7 @@ export async function prepareNext(s: Settings): Promise<AssistantReply> {
   const today = todayISO();
   const plans: { cls: string; date: string; periodId: string; label: string; lesson: string; session: number; existing?: LessonRecord; apply: Partial<LessonRecord> }[] = [];
   const classes = allClasses(s);
+  const ov = await loadOverrides(today, addDays(today, 14));
   for (const c of classes) {
     // 오늘부터 2주 안의 다음 시간표 칸
     let found = false;
@@ -185,7 +187,7 @@ export async function prepareNext(s: Settings): Promise<AssistantReply> {
       const wd = isoWeekday(date);
       if (!s.weekdays.includes(wd)) continue;
       for (const p of s.periods) {
-        if (s.timetable[slotKey(wd, p.id)] !== c.key) continue;
+        if (effectiveSlot(s, date, p.id, ov).classKey !== c.key) continue;
         const rec = await db.lessons.where('[date+periodId]').equals([date, p.id]).first();
         if (rec?.completed) continue;
         found = true;

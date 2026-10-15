@@ -6,7 +6,7 @@ import * as repo from '../services/repo';
 import { useSettings } from '../hooks/useData';
 import { navigate } from '../hooks/useRoute';
 import { openLesson } from '../components/planner/lessonDrawerStore';
-import { setLessonCompleted, slotKey, suggestNextFor, type Suggestion } from '../services/planner';
+import { effectiveSlot, loadOverrides, setLessonCompleted, suggestNextFor, type Suggestion } from '../services/planner';
 import { addTask, sortTasks, taskBucket } from '../services/tasks';
 import { openMeteoWeather, type WeatherNow } from '../services/weather/weather';
 import { TaskItem } from '../components/tasks/TaskItem';
@@ -79,10 +79,12 @@ function WeatherWidget({ s }: { s: Settings }) {
 function TodayLessons({ s, today }: { s: Settings; today: string }) {
   const wd = isoWeekday(today);
   const records = useLiveQuery(() => db.lessons.where('date').equals(today).toArray(), [today]) ?? [];
+  const overrides = useLiveQuery(() => loadOverrides(today, today), [today]);
   const rows = s.periods
     .map((p) => {
       const rec = records.find((r) => r.periodId === p.id);
-      const cls = rec?.classKey ?? s.timetable[slotKey(wd, p.id)];
+      // 정기 시간표 + 이번 주 변경(반 바꾸기 · 휴강)
+      const cls = rec?.classKey ?? effectiveSlot(s, today, p.id, overrides).classKey;
       return cls ? { p, rec, cls } : null;
     })
     .filter(Boolean) as { p: Settings['periods'][number]; rec?: LessonRecord; cls: string }[];

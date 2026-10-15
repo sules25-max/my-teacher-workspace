@@ -5,9 +5,10 @@
   font-display: swap;
 }
 
+/* 강조(제목 · 섹션 · 버튼) 폰트 */
 @font-face {
-  font-family: 'NostalgicPoliceFairness';
-  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2601-6@1.0/Griun_PolFairness-Rg.woff2') format('woff2');
+  font-family: 'GeekbleMalrangiche';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2302_01@1.0/GeekbleMalang2WOFF2.woff2') format('woff2');
   font-weight: normal;
   font-display: swap;
 }
@@ -38,7 +39,7 @@
 
   /* type */
   --font-body: 'AyoungSYearning2019Handwriting', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-  --font-title: 'NostalgicPoliceFairness', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-title: 'GeekbleMalrangiche', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   --fs-xs: 0.82rem;
   --fs-sm: 0.94rem;
   --fs-md: 1.06rem;

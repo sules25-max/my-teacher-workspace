@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Send, ShieldCheck, X } from 'lucide-react';
 import { AssistantAvatar } from './AssistantAvatar';
+import { AgentScene } from '../agent/AgentScene';
+import { react } from '../agent/agentStore';
 import { AssistantMessage, type ChatMessage } from './AssistantMessage';
 import { AssistantQuickActions } from './AssistantQuickActions';
 import type { AssistantExpression } from './sprite';
@@ -21,7 +23,7 @@ interface Props {
 
 let msgSeq = 1;
 
-export function AssistantPanel({ open, onClose, expression, setExpression }: Props) {
+export function AssistantPanel({ open, onClose, setExpression }: Props) {
   const s = useSettings();
   const route = useRoute();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -37,6 +39,7 @@ export function AssistantPanel({ open, onClose, expression, setExpression }: Pro
 
   useEffect(() => {
     if (!open) return;
+    react('greet');
     provider.available().then(setRemote);
     buildContext(route).then(setCtx);
   }, [open, route.name, route.params.join('/'), s.ai.provider]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -58,14 +61,17 @@ export function AssistantPanel({ open, onClose, expression, setExpression }: Pro
     setExpression(r.expression);
   };
 
-  const run = async (label: string, fn: () => Promise<AssistantReply>) => {
+  const run = async (label: string, fn: () => Promise<AssistantReply>, kind: 'thinking' | 'search' = 'thinking') => {
     push({ role: 'user', text: label });
     setBusy(true);
     setExpression('thinking');
+    react(kind); // AI 이나: 생각하기 / 자료실로 찾으러 가기
     try {
       reply(await fn());
+      react(kind === 'search' ? 'found' : 'answer');
     } catch (e) {
       reply({ text: `앗, 문제가 생겼어: ${(e as Error).message}`, expression: 'worried' });
+      react('error');
     } finally {
       setBusy(false);
     }
@@ -108,18 +114,21 @@ export function AssistantPanel({ open, onClose, expression, setExpression }: Pro
     setInput('');
     if (mode === 'find') {
       setMode('ask');
-      return run(q, () => findMemos(q));
+      return run(q, () => findMemos(q), 'search');
     }
     if (!remote) return run(q, () => localAnswer(q, s, route));
     const sendCtx = includeCtx ? ctx : null;
     push({ role: 'user', text: q, contextLabel: sendCtx?.label ?? '없음' });
     setBusy(true);
     setExpression('thinking');
+    react('thinking');
     try {
       const history = messages.filter((m) => m.text).map((m) => ({ role: m.role, content: m.text }));
       const text = await provider.chat([...history, { role: 'user', content: q }], sendCtx);
       reply({ text: text || '음… 답을 못 만들었어.', expression: 'confident' });
+      react(text ? 'answer' : 'error');
     } catch (e) {
+      react('error');
       reply({ text: `외부 AI에 연결하지 못했어 (${(e as Error).message}). 기기 안에서 찾아볼게.`, expression: 'worried' });
       reply(await localAnswer(q, s, route));
     } finally {
@@ -133,7 +142,6 @@ export function AssistantPanel({ open, onClose, expression, setExpression }: Pro
       <div className="ai-scrim" onClick={onClose} />
       <aside className="ai-panel" role="dialog" aria-label="AI 이나" aria-modal="false">
         <header className="ai-panel__head">
-          <AssistantAvatar expression={busy ? 'thinking' : expression} size={46} />
           <div className="ai-panel__title">
             <span className="title-font">AI 이나</span>
             <span className="ai-panel__provider muted">
@@ -144,6 +152,9 @@ export function AssistantPanel({ open, onClose, expression, setExpression }: Pro
             <X size={20} />
           </button>
         </header>
+        <div className="ai-panel__scene">
+          <AgentScene size="large" />
+        </div>
 
         <ul className="list-reset ai-panel__messages" ref={listRef} aria-live="polite">
           {messages.length === 0 && (
@@ -157,7 +168,11 @@ export function AssistantPanel({ open, onClose, expression, setExpression }: Pro
           {messages
             .filter((m) => m.text)
             .map((m) => (
-              <AssistantMessage key={m.id} m={m} onActionResult={(t) => (t ? reply({ text: t, expression: t.startsWith('앗') ? 'worried' : 'happy' }) : setExpression('neutral'))} />
+              <AssistantMessage key={m.id} m={m} onActionResult={(t) => {
+                if (!t) return setExpression('neutral');
+                react(t.startsWith('앗') ? 'error' : 'done'); // 반영 완료 → 기뻐하기
+                reply({ text: t, expression: t.startsWith('앗') ? 'worried' : 'happy' });
+              }} />
             ))}
           {busy && (
             <li className="ai-msg ai-msg--ai">

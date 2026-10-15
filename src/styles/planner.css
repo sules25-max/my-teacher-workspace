@@ -575,3 +575,119 @@
 .slot-pick__item .chip {
   grid-area: chip;
 }
+
+/* ---------- 이번 주만 시간표 변경 ---------- */
+.chip--change {
+  margin-left: 8px;
+  border-color: var(--orange);
+  background: #fff6e6;
+  color: var(--navy);
+}
+.notice--edit {
+  border-color: var(--orange);
+  background: #fffaf0;
+}
+.lesson-cell.is-changed {
+  border-style: solid;
+  border-color: var(--orange);
+  box-shadow: inset 0 0 0 1px var(--orange);
+}
+.lesson-cell__badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--orange);
+  color: var(--navy);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  vertical-align: middle;
+}
+.lesson-cell--cancelled {
+  display: grid;
+  align-content: start;
+  gap: 1px;
+  width: 100%;
+  min-height: 80px;
+  padding: 7px 9px;
+  border: var(--line) dashed var(--pink);
+  border-radius: var(--radius);
+  background: repeating-linear-gradient(-45deg, #fff 0 6px, #fff3f5 6px 12px);
+  text-align: left;
+}
+.lesson-cell--cancelled .lesson-cell__class {
+  color: var(--pink);
+}
+.slot-editor {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  height: 100%;
+  min-height: 80px;
+  padding: 6px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.slot-editor.is-changed {
+  border-style: solid;
+  border-color: var(--orange);
+  background: #fffaf0;
+}
+.slot-editor.is-cancelled {
+  border-color: var(--pink);
+  background: #fff5f7;
+}
+.slot-editor__select {
+  min-height: 40px;
+  padding: 4px 8px;
+  font-family: var(--font-title);
+}
+.slot-editor__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: var(--fs-xs);
+  color: var(--navy-soft);
+}
+.week--editing .planner-paper {
+  box-shadow: 0 4px 0 var(--orange);
+}
+.slot-change {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.slot-change.is-changed {
+  border-color: var(--orange);
+  background: #fffaf0;
+}
+.slot-change__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--navy-soft);
+  font-size: var(--fs-sm);
+}
+.slot-change__body {
+  display: grid;
+  gap: var(--s2);
+  padding: 0 12px 12px;
+}
+.slot-change__chip {
+  min-height: 36px;
+  cursor: pointer;
+  font-family: var(--font-title);
+}
