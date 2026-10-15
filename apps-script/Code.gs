@@ -5,6 +5,7 @@
  *  1. script.google.com 에서 새 프로젝트를 만들고 이 파일 내용을 붙여 넣는다.
  *  2. 함수 목록에서 setup 을 실행하고 권한을 허용한다. 실행 로그에 "연결 토큰"이 나온다.
  *  3. (선택) 프로젝트 설정 → 스크립트 속성에 GROQ_API_KEY, GEMINI_API_KEY 또는 OPENAI_API_KEY 를 추가한다.
+ *     모델을 바꾸려면 GROQ_MODEL / GEMINI_MODEL / OPENAI_MODEL 속성을 추가한다(예: gemini-3.5-flash-lite).
  *  4. 배포 → 새 배포 → 유형: 웹 앱 / 실행 사용자: 나 / 액세스 권한: 모든 사용자 → URL 복사
  *  5. 앱 설정 → Google 동기화 에 URL과 토큰을 넣는다.
  *
@@ -369,10 +370,11 @@ function parseDate_(iso) {
 // ---------------------------------------------------------------- AI 프록시
 // API 키는 스크립트 속성(GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY)에서만 읽는다.
 
+// 기본 모델. 스크립트 속성 GROQ_MODEL / GEMINI_MODEL / OPENAI_MODEL 을 넣으면 그 값이 우선한다.
 var AI_PROVIDERS = {
-  groq: { keyName: 'GROQ_API_KEY', model: 'llama-3.3-70b-versatile' },
-  gemini: { keyName: 'GEMINI_API_KEY', model: 'gemini-flash-latest' },
-  openai: { keyName: 'OPENAI_API_KEY', model: 'gpt-4o-mini' },
+  groq: { keyName: 'GROQ_API_KEY', modelProp: 'GROQ_MODEL', model: 'llama-3.3-70b-versatile' },
+  gemini: { keyName: 'GEMINI_API_KEY', modelProp: 'GEMINI_MODEL', model: 'gemini-3.5-flash-lite' },
+  openai: { keyName: 'OPENAI_API_KEY', modelProp: 'OPENAI_MODEL', model: 'gpt-4o-mini' },
 };
 var AI_ORDER = ['groq', 'gemini', 'openai'];
 var OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
@@ -411,7 +413,8 @@ function aiKey_(id) {
 
 function callWithModelRecovery_(id, key, userModel, system, context, messages) {
   var cache = CacheService.getScriptCache();
-  var model = userModel || cache.get('ai_model_' + id) || AI_PROVIDERS[id].model;
+  var propModel = String(PropertiesService.getScriptProperties().getProperty(AI_PROVIDERS[id].modelProp) || '').trim();
+  var model = userModel || propModel || cache.get('ai_model_' + id) || AI_PROVIDERS[id].model;
   try {
     return { text: callProvider_(id, key, model, system, context, messages), model: model };
   } catch (e) {
@@ -445,7 +448,7 @@ function discoverModel_(id, key, exclude) {
   var names = listModels_(id, key).filter(function (n) { return n !== exclude; });
   var prefs = {
     groq: [/^llama-3\.3-70b/, /gpt-oss-120b/, /llama-4/, /70b/, /gpt-oss/, /llama/, /qwen/, /./],
-    gemini: [/^gemini-flash-latest$/, /^gemini-[\d.]+-flash$/, /^gemini-[\d.]+-flash-lite$/, /^gemini-[\d.]+-pro$/, /flash/, /gemini/],
+    gemini: [/^gemini-[\d.]+-flash-lite$/, /^gemini-flash-lite-latest$/, /flash-lite/, /^gemini-flash-latest$/, /^gemini-[\d.]+-flash$/, /flash/, /gemini/],
     openai: [/^gpt-4o-mini$/, /^gpt-4\.1-mini$/, /mini$/, /^gpt-/],
   }[id];
   for (var i = 0; i < prefs.length; i++) {
@@ -469,7 +472,7 @@ function listModels_(id, key) {
     return (j.models || [])
       .filter(function (m) { return (m.supportedGenerationMethods || []).indexOf('generateContent') >= 0; })
       .map(function (m) { return String(m.name).replace(/^models\//, ''); })
-      .filter(function (n) { return !/(tts|image|embedding|live|audio|vision|aqa|learnlm|preview|exp|robotics|computer)/.test(n); })
+      .filter(function (n) { return !/(tts|image|embedding|live|audio|vision|aqa|learnlm|robotics|computer)/.test(n); })
       .sort().reverse(); // 숫자가 큰(새) 버전 먼저
   }
   return (j.data || [])
