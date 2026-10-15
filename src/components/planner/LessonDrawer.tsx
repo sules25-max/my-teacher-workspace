@@ -5,7 +5,7 @@ import { db } from '../../services/localDb';
 import * as repo from '../../services/repo';
 import { useSettings } from '../../hooks/useData';
 import { closeLesson, useLessonTarget, type LessonTarget } from './lessonDrawerStore';
-import { Drawer, confirmDialog, toast } from '../common/overlays';
+import { Drawer, Modal, confirmDialog, toast } from '../common/overlays';
 import { AutoInput, AutoTextarea, Checklist } from '../common/fields';
 import { AttachmentBar } from '../common/Attachments';
 import {
@@ -15,7 +15,8 @@ import {
   copyLesson,
   createLessonRecord,
   curriculumFor,
-  findCopyTarget,
+  listCopySlots,
+  type CopyTarget,
   periodLabel,
   setLessonCompleted,
   slotKey,
@@ -26,7 +27,7 @@ import {
   type Suggestion,
 } from '../../services/planner';
 import type { LessonRecord, Settings } from '../../types';
-import { formatShort, isoWeekday } from '../../utils/date';
+import { WEEKDAY_KO, formatShort, isoWeekday } from '../../utils/date';
 import { ACTIVITY_PRESETS, MATERIAL_PRESETS } from '../../data/defaults';
 import { cx, parseClassKey } from '../../utils/id';
 import { PixelIcon } from '../common/Deco';
@@ -301,27 +302,38 @@ function LessonPicker({
 function CopySection({ s, record }: { s: Settings; record: LessonRecord }) {
   const others = useMemo(() => classesOfGrade(s, record.grade).filter((c) => c.key !== record.classKey), [s, record.grade, record.classKey]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [picker, setPicker] = useState<{ key: string; slots: CopyTarget[]; chosen: number; recommended: number } | null>(null);
   const copied = useLiveQuery(() => db.lessons.where('classKey').anyOf(others.map((o) => o.key)).filter((r) => r.copiedFrom === record.id).toArray(), [record.id, others.length]);
   if (!others.length) return null;
 
-  const run = async (key: string) => {
+  const doCopy = async (t: CopyTarget) => {
+    if (t.willOverwrite) {
+      const ok = await confirmDialog({
+        title: `${t.classKey}에 복사`,
+        message: `${t.slotLabel} 칸에 이미 "${t.existing?.lesson} ${t.existing?.session}차시"가 있어요.\n수업 내용만 바꾸고 ${t.classKey}의 메모와 첨부는 그대로 둘까요?`,
+        confirmLabel: '바꾸기',
+      });
+      if (!ok) return false;
+    }
+    await copyLesson(s, record, t);
+    return true;
+  };
+
+  /** ask=true면 이번 주에 그 반 수업이 2번 이상일 때 어느 칸에 넣을지 고르게 한다 */
+  const run = async (key: string, ask: boolean) => {
     setBusy(key);
     try {
-      const t = await findCopyTarget(s, record, key);
-      if (!t.date) {
+      const { slots, recommended } = await listCopySlots(s, record, key);
+      if (!slots.length) {
         toast(`이번 주 시간표에 ${key} 수업이 없어요. 설정 → 시간표에서 지정해 주세요.`);
-        return;
+        return null;
       }
-      if (t.willOverwrite) {
-        const ok = await confirmDialog({
-          title: `${key}에 복사`,
-          message: `${t.slotLabel} 칸에 이미 "${t.existing?.lesson} ${t.existing?.session}차시"가 있어요.\n수업 내용만 바꾸고 ${key}의 메모와 첨부는 그대로 둘까요?`,
-          confirmLabel: '바꾸기',
-        });
-        if (!ok) return;
+      if (ask && slots.length > 1) {
+        setPicker({ key, slots, chosen: recommended, recommended });
+        return null;
       }
-      await copyLesson(s, record, t);
-      toast(`${key} ${t.slotLabel}에 복사했어요.`);
+      const t = slots[recommended];
+      return (await doCopy(t)) ? t : null;
     } finally {
       setBusy(null);
     }
@@ -335,9 +347,18 @@ function CopySection({ s, record }: { s: Settings; record: LessonRecord }) {
       <p className="muted copy-box__hint">Lesson · 차시 · 목표 · 활동 · 준비물만 복사돼요. 메모는 반마다 따로 써요.</p>
       <div className="row row--wrap">
         {others.map((o) => {
-          const done = copied?.some((c) => c.classKey === o.key);
+          const done = copied?.find((c) => c.classKey === o.key);
           return (
-            <button key={o.key} className={cx('btn btn--sm btn--title', done && 'is-copied')} disabled={busy === o.key} onClick={() => run(o.key)}>
+            <button
+              key={o.key}
+              className={cx('btn btn--sm btn--title', done && 'is-copied')}
+              disabled={busy === o.key}
+              onClick={async () => {
+                const t = await run(o.key, true);
+                if (t) toast(`${o.key} ${t.slotLabel}에 복사했어요.`);
+              }}
+              title={done ? `${WEEKDAY_KO[isoWeekday(done.date)]} ${periodLabel(s, done.periodId)}에 복사됨` : undefined}
+            >
               {done ? <PixelIcon kind="star" size={12} color="var(--orange)" /> : null}
               {o.key}에 복사
             </button>
@@ -348,13 +369,67 @@ function CopySection({ s, record }: { s: Settings; record: LessonRecord }) {
             className="btn btn--sm btn--primary"
             disabled={!!busy}
             onClick={async () => {
-              for (const o of others) await run(o.key);
+              const done: string[] = [];
+              for (const o of others) {
+                const t = await run(o.key, false);
+                if (t) done.push(`${o.key} ${t.slotLabel}`);
+              }
+              if (done.length) toast(`복사했어요: ${done.join(', ')}`, undefined, 6000);
             }}
           >
             모든 반에 복사
           </button>
         )}
       </div>
+
+      <Modal
+        open={!!picker}
+        onClose={() => setPicker(null)}
+        title={`${picker?.key ?? ''} · 어느 수업에 넣을까요?`}
+        label="복사할 칸 선택"
+        footer={
+          <>
+            <button className="btn" onClick={() => setPicker(null)}>
+              취소
+            </button>
+            <button
+              className="btn btn--primary"
+              onClick={async () => {
+                if (!picker) return;
+                const t = picker.slots[picker.chosen];
+                setPicker(null);
+                if (await doCopy(t)) toast(`${t.classKey} ${t.slotLabel}에 복사했어요.`);
+              }}
+            >
+              복사
+            </button>
+          </>
+        }
+      >
+        {picker && (
+          <div className="slot-pick" role="radiogroup" aria-label="복사할 칸">
+            <p className="muted">이번 주에 {picker.key} 수업이 {picker.slots.length}번 있어요.</p>
+            {picker.slots.map((sl, i) => (
+              <button
+                key={`${sl.date}:${sl.periodId}`}
+                role="radio"
+                aria-checked={picker.chosen === i}
+                className={cx('slot-pick__item', picker.chosen === i && 'is-active')}
+                onClick={() => setPicker({ ...picker, chosen: i })}
+              >
+                <span className="slot-pick__radio" aria-hidden="true" />
+                <span className="slot-pick__label title-font">
+                  {sl.slotLabel} <span className="muted slot-pick__date">{formatShort(sl.date!)}</span>
+                </span>
+                <span className="slot-pick__state">
+                  {sl.existing?.lesson ? `${sl.existing.lesson} ${sl.existing.session}차시${sl.existing.completed ? ' · 완료' : ''}` : '비어 있음'}
+                </span>
+                {i === picker.recommended && <span className="chip chip--done">추천</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }

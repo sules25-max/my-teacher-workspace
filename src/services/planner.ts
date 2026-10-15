@@ -2,7 +2,7 @@ import { db } from './localDb';
 import * as repo from './repo';
 import type { CurriculumLesson, LessonRecord, PeriodSlot, ProgressEntry, Settings } from '../types';
 import { classKey, parseClassKey, uuid } from '../utils/id';
-import { WEEKDAY_KO, dateOfWeekday, isoWeekday, startOfWeek } from '../utils/date';
+import { WEEKDAY_KO, dateOfWeekday, isoWeekday, parseISODate, startOfWeek } from '../utils/date';
 
 // 시간표 · 진도 · 수업 기록을 서로 연결하는 도메인 로직.
 
@@ -238,29 +238,60 @@ export interface CopyTarget {
   willOverwrite: boolean;
 }
 
-/** 같은 주 시간표에서 대상 반의 수업 칸을 찾는다. 비어 있는 칸을 먼저 고른다. */
-export async function findCopyTarget(s: Settings, source: LessonRecord, target: string): Promise<CopyTarget> {
+/**
+ * 같은 주에 대상 반이 들어 있는 모든 칸(정기 시간표 + 따로 넣은 수업)을 시간순으로 돌려준다.
+ * recommended: 비어 있는 칸 중 원래 수업과 가장 가까운 칸(같은 거리면 뒤쪽).
+ */
+export async function listCopySlots(s: Settings, source: LessonRecord, target: string): Promise<{ slots: CopyTarget[]; recommended: number }> {
   const weekStart = startOfWeek(source.date);
-  const slots: { date: string; periodId: string; weekday: number }[] = [];
+  const weekEnd = dateOfWeekday(weekStart, 7);
+  const raw = new Map<string, { date: string; periodId: string }>();
   for (const wd of s.weekdays) {
     for (const p of s.periods) {
-      if (s.timetable[slotKey(wd, p.id)] === target) slots.push({ date: dateOfWeekday(weekStart, wd), periodId: p.id, weekday: wd });
+      if (s.timetable[slotKey(wd, p.id)] === target) {
+        const date = dateOfWeekday(weekStart, wd);
+        raw.set(`${date}:${p.id}`, { date, periodId: p.id });
+      }
     }
   }
-  if (!slots.length) return { classKey: target, willOverwrite: false };
-  const weekRecords = await db.lessons.where('classKey').equals(target).toArray();
-  const at = (sl: (typeof slots)[number]) => weekRecords.find((r) => r.date === sl.date && r.periodId === sl.periodId);
-  const free = slots.find((sl) => !at(sl)?.lesson);
-  const chosen = free ?? slots[0];
-  const existing = at(chosen);
-  return {
-    classKey: target,
-    date: chosen.date,
-    periodId: chosen.periodId,
-    slotLabel: `${WEEKDAY_KO[chosen.weekday]} ${periodLabel(s, chosen.periodId)}`,
-    existing,
-    willOverwrite: !!existing?.lesson,
-  };
+  const records = (await db.lessons.where('classKey').equals(target).toArray()).filter((r) => r.date >= weekStart && r.date <= weekEnd);
+  for (const r of records) raw.set(`${r.date}:${r.periodId}`, { date: r.date, periodId: r.periodId });
+
+  const pos = (date: string, periodId: string) => parseISODate(date).getTime() / 86400000 + periodIndex(s, periodId) / 100;
+  const slots: CopyTarget[] = [...raw.values()]
+    .sort((a, b) => pos(a.date, a.periodId) - pos(b.date, b.periodId))
+    .map((sl) => {
+      const existing = records.find((r) => r.date === sl.date && r.periodId === sl.periodId);
+      return {
+        classKey: target,
+        date: sl.date,
+        periodId: sl.periodId,
+        slotLabel: `${WEEKDAY_KO[isoWeekday(sl.date)]} ${periodLabel(s, sl.periodId)}`,
+        existing,
+        willOverwrite: !!existing?.lesson,
+      };
+    });
+  if (!slots.length) return { slots, recommended: -1 };
+
+  const src = pos(source.date, source.periodId);
+  let best = -1;
+  let bestScore = Infinity;
+  slots.forEach((sl, i) => {
+    const d = pos(sl.date!, sl.periodId!) - src;
+    // 비어 있는 칸 우선 → 가까운 칸 우선 → 같은 거리면 원래 수업보다 뒤쪽 칸
+    const score = (sl.willOverwrite ? 1000 : 0) + Math.abs(d) + (d < 0 ? 0.001 : 0);
+    if (score < bestScore) {
+      bestScore = score;
+      best = i;
+    }
+  });
+  return { slots, recommended: best };
+}
+
+/** 추천 칸 하나를 고른다(모든 반에 복사할 때처럼 묻지 않는 경우). */
+export async function findCopyTarget(s: Settings, source: LessonRecord, target: string): Promise<CopyTarget> {
+  const { slots, recommended } = await listCopySlots(s, source, target);
+  return recommended >= 0 ? slots[recommended] : { classKey: target, willOverwrite: false };
 }
 
 /** 수업 내용만 복사하고 반별 메모·첨부·완료 여부는 각 반에 남긴다. */
