@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 // GitHub Pages(https://<id>.github.io/<repo>/) 어디에 올려도 동작하도록 상대 경로 + 해시 라우팅을 사용한다.
 export default defineConfig({
   base: './',
+  // 설정 화면에 보여줄 빌드 시각(한국 시간)
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ')),
+  },
   plugins: [
     react(),
     VitePWA({

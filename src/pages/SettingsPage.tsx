@@ -18,6 +18,7 @@ import { backupFileName, downloadJSON, exportStructureOnly, exportWorkspace, imp
 import { getAIProvider } from '../services/ai/provider';
 import { callAppsScript } from '../services/google/appsScriptClient';
 import { setDevMode, useDevMode } from '../services/devMode';
+import { BUILD_TIME, applyUpdate, checkForUpdate, useNeedRefresh } from '../services/appUpdate';
 import { PasteConnectCode, ShareConnection } from '../components/common/DeviceConnect';
 
 type Tab = 'basic' | 'periods' | 'timetable' | 'curriculum' | 'calendar' | 'sync' | 'ai' | 'backup';
@@ -136,6 +137,36 @@ export function ClassCounts({ s, onChange }: { s: Pick<Settings, 'grades' | 'cla
   );
 }
 
+function AppVersion() {
+  const need = useNeedRefresh();
+  const [msg, setMsg] = useState('');
+  return (
+    <div className="settings__storage">
+      <span>
+        앱 버전: <b>{BUILD_TIME}</b>
+        {need && <span className="chip chip--change">새 버전 준비됨</span>}
+      </span>
+      {need ? (
+        <button className="btn btn--sm btn--primary" onClick={() => void applyUpdate()}>
+          새 버전 적용
+        </button>
+      ) : (
+        <button
+          className="btn btn--sm"
+          onClick={async () => {
+            setMsg('확인 중…');
+            const r = await checkForUpdate();
+            setMsg({ ready: '새 버전이 있어요. [새 버전 적용]을 눌러 주세요.', latest: '최신 버전이에요.', offline: '오프라인이라 확인할 수 없어요.', unsupported: '이 브라우저에서는 확인할 수 없어요. 새로고침해 주세요.' }[r]);
+          }}
+        >
+          업데이트 확인
+        </button>
+      )}
+      {msg && <span className="muted">{msg}</span>}
+    </div>
+  );
+}
+
 function BasicSettings({ s }: { s: Settings }) {
   const [persisted, setPersisted] = useState<boolean | null>(null);
   useEffect(() => {
@@ -196,6 +227,7 @@ function BasicSettings({ s }: { s: Settings }) {
           </Field>
         </div>
       )}
+      <AppVersion />
       <div className="settings__storage">
         <span>기기 저장소: {persisted ? '✓ 영구 저장 허용됨' : '브라우저가 공간이 부족할 때 정리할 수 있음'}</span>
         {!persisted && (
