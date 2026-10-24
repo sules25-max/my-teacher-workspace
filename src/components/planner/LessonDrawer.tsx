@@ -27,11 +27,13 @@ import {
   inAcademicYear,
   effectiveSlot,
   setSlotOverride,
+  moveLessonSlot,
+  normalizeClassInput,
   type EffectiveSlot,
   type Suggestion,
 } from '../../services/planner';
 import type { LessonRecord, Settings } from '../../types';
-import { WEEKDAY_KO, formatShort, isoWeekday } from '../../utils/date';
+import { WEEKDAY_KO, dateOfWeekday, formatShort, isoWeekday, startOfWeek } from '../../utils/date';
 import { ACTIVITY_PRESETS, MATERIAL_PRESETS } from '../../data/defaults';
 import { cx, parseClassKey } from '../../utils/id';
 import { PixelIcon } from '../common/Deco';
@@ -100,7 +102,17 @@ function LessonCard({ target }: { target: LessonTarget }) {
             </button>
           </div>
         )}
-        <ClassPicker s={s} periodId={periodId} date={date} onPick={setPickedClass} />
+        <ClassPicker
+          s={s}
+          periodId={periodId}
+          date={date}
+          onPick={setPickedClass}
+          onCustom={async (cls) => {
+            // 담당 반이 아닌 학급(보결 등): 이번 주 시간표 변경으로 남겨 AI 비서도 찾을 수 있게
+            await setSlotOverride(s, date, periodId, cls, '보결', 'substitute');
+            setPickedClass(cls);
+          }}
+        />
       </div>
     );
   }
@@ -195,7 +207,8 @@ function LessonCard({ target }: { target: LessonTarget }) {
   );
 }
 
-function ClassPicker({ s, periodId, date, onPick }: { s: Settings; periodId: string; date: string; onPick: (k: string) => void }) {
+function ClassPicker({ s, periodId, date, onPick, onCustom }: { s: Settings; periodId: string; date: string; onPick: (k: string) => void; onCustom: (k: string) => void }) {
+  const [typed, setTyped] = useState('');
   const period = s.periods.find((p) => p.id === periodId);
   const classes = allClasses(s).filter((c) => !period || periodAllowsGrade(period, c.grade));
   return (
@@ -211,6 +224,21 @@ function ClassPicker({ s, periodId, date, onPick }: { s: Settings; periodId: str
           </button>
         ))}
       </div>
+      <form
+        className="row row--wrap custom-class"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const cls = normalizeClassInput(typed);
+          if (!cls) return toast('"5-3" 또는 "5학년 3반"처럼 적어 주세요.');
+          onCustom(cls);
+        }}
+      >
+        <span className="muted">보결 · 다른 학급</span>
+        <input className="input custom-class__input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="예) 5-3" aria-label="학급 직접 입력" />
+        <button className="btn btn--sm" disabled={!typed.trim()}>
+          넣기
+        </button>
+      </form>
     </div>
   );
 }
@@ -477,6 +505,7 @@ function SlotChangeSection({
 }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState(eff?.override?.note ?? '');
+  const [typed, setTyped] = useState('');
   const period = s.periods.find((p) => p.id === periodId);
   const classes = allClasses(s).filter((c) => !period || periodAllowsGrade(period, c.grade));
   const changed = !!eff?.override;
@@ -513,9 +542,29 @@ function SlotChangeSection({
               </button>
             ))}
           </div>
+          <form
+            className="row custom-class"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const cls = normalizeClassInput(typed);
+              if (!cls) return toast('"5-3" 또는 "5학년 3반"처럼 적어 주세요.');
+              const roster = classes.some((c) => c.key === cls);
+              if (await changeSlotClass(s, date, periodId, cls, eff?.regular, note || (roster ? undefined : '보결'), roster ? 'change' : 'substitute')) {
+                onPicked(cls);
+                setTyped('');
+                toast(`${cls}(으)로 바꿨어요${roster ? '' : ' (보결)'}. (이번 주만)`);
+              }
+            }}
+          >
+            <input className="input custom-class__input" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="✎ 직접 입력 (보결) 예) 5-3" aria-label="학급 직접 입력" />
+            <button className="btn btn--sm" disabled={!typed.trim()}>
+              넣기
+            </button>
+          </form>
           <div className="row">
             <input className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="사유 (선택) 예) 학예회 연습, 교환 수업" aria-label="변경 사유" />
           </div>
+          <MoveTo s={s} date={date} periodId={periodId} />
           <div className="row row--wrap">
             <button
               className="btn btn--sm btn--pink"
@@ -546,5 +595,48 @@ function SlotChangeSection({
         </div>
       )}
     </section>
+  );
+}
+
+/** 드래그가 어려울 때: 날짜 · 교시를 골라 다른 칸으로 옮기기(대상에 수업이 있으면 교환) */
+function MoveTo({ s, date, periodId }: { s: Settings; date: string; periodId: string }) {
+  const ws = startOfWeek(date);
+  const days = s.weekdays.map((wd) => dateOfWeekday(ws, wd));
+  const [toDate, setToDate] = useState(date);
+  const [toPeriod, setToPeriod] = useState(periodId);
+  const same = toDate === date && toPeriod === periodId;
+  return (
+    <div className="row row--wrap move-to">
+      <span className="muted">다른 칸으로 옮기기</span>
+      <select className="select move-to__sel" value={toDate} onChange={(e) => setToDate(e.target.value)} aria-label="옮길 날짜">
+        {days.map((d) => (
+          <option key={d} value={d}>
+            {formatShort(d)}
+          </option>
+        ))}
+      </select>
+      <select className="select move-to__sel" value={toPeriod} onChange={(e) => setToPeriod(e.target.value)} aria-label="옮길 교시">
+        {s.periods.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+      <button
+        className="btn btn--sm"
+        disabled={same}
+        onClick={async () => {
+          try {
+            const r = await moveLessonSlot(s, { date, periodId }, { date: toDate, periodId: toPeriod });
+            closeLesson();
+            toast(r.swapped ? `${r.fromClass} ↔ ${r.toClass} 교환했어요.` : `${formatShort(toDate)} ${periodLabel(s, toPeriod)}(으)로 옮겼어요.`);
+          } catch (e) {
+            toast((e as Error).message);
+          }
+        }}
+      >
+        옮기기
+      </button>
+    </div>
   );
 }

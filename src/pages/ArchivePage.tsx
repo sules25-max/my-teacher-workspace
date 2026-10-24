@@ -38,7 +38,8 @@ export function ArchivePage() {
   const lessons = useLiveQuery(() => db.lessons.orderBy('date').reverse().toArray(), []) ?? [];
   const meetings = useLiveQuery(() => db.meetings.orderBy('date').reverse().toArray(), []) ?? [];
   const pages = useLiveQuery(() => db.pages.filter((p) => !!p.archived).toArray(), []) ?? [];
-  const notes = useLiveQuery(() => db.notes.orderBy('date').reverse().filter((n) => n.kind === 'quick').toArray(), []) ?? [];
+  // 빠른 메모 · 하루 정리 · AI Inbox (날짜 메모는 월간 달력에서)
+  const notes = useLiveQuery(() => db.notes.orderBy('date').reverse().filter((n) => n.kind !== 'day').toArray(), []) ?? [];
 
   const years = useMemo(() => {
     const ys = new Set<number>();
@@ -202,7 +203,10 @@ function NoteArchive({ items }: { items: Note[] }) {
     <ul className="list-reset note-wall">
       {items.map((n) => (
         <li key={n.id} className="note-sticky">
-          <span className="note-sticky__date title-font">{formatShort(n.date)}</span>
+          <span className="note-sticky__date title-font">
+            {formatShort(n.date)}
+            {n.kind !== 'quick' && <span className="chip note-sticky__kind">{n.kind === 'summary' ? '하루 정리' : 'AI Inbox'}</span>}
+          </span>
           <p>{n.text}</p>
           <button
             className="icon-btn note-sticky__del"

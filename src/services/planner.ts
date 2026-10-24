@@ -364,14 +364,63 @@ export function effectiveSlot(s: Settings, date: string, periodId: string, ov?: 
  * 그 날짜의 칸만 바꾼다. classKey: 반 / null: 휴강 / undefined: 원래 시간표로.
  * 정기 시간표와 같아지면 변경 기록을 지운다.
  */
-export async function setSlotOverride(s: Settings, date: string, periodId: string, classKey: string | null | undefined, note?: string) {
+export async function setSlotOverride(
+  s: Settings,
+  date: string,
+  periodId: string,
+  classKey: string | null | undefined,
+  note?: string,
+  kind?: SlotOverride['kind'],
+) {
   const existing = await db.slotOverrides.where('[date+periodId]').equals([date, periodId]).first();
   const regular = s.timetable[slotKey(isoWeekday(date), periodId)];
-  const restore = classKey === undefined || (classKey !== null && classKey === regular);
+  const restore =
+    classKey === undefined ||
+    (classKey !== null && classKey === regular && kind !== 'substitute') ||
+    (classKey === null && !regular); // 원래 수업이 없던 칸을 비우는 것은 "변경 없음"
   if (restore) {
     if (existing) await repo.remove('slotOverrides', existing.id);
     return;
   }
-  if (existing) await repo.update<SlotOverride>('slotOverrides', existing.id, { classKey, note });
-  else await repo.create<SlotOverride>('slotOverrides', { date, periodId, classKey, note });
+  const k = kind ?? (classKey === null ? 'cancel' : 'change');
+  if (existing) await repo.update<SlotOverride>('slotOverrides', existing.id, { classKey, note, kind: k });
+  else await repo.create<SlotOverride>('slotOverrides', { date, periodId, classKey, note, kind: k });
+}
+
+/** "5-3", "5학년 3반" → "5-3" (담당 반이 아닌 학급도 가능: 보결) */
+export function normalizeClassInput(v: string): string | null {
+  const t = v.trim();
+  const m = t.match(/^(\d)\s*[-–]\s*(\d{1,2})$/) ?? t.match(/^(\d)\s*학년\s*(\d{1,2})\s*반?$/);
+  return m ? `${m[1]}-${+m[2]}` : null;
+}
+
+export interface SlotRef {
+  date: string;
+  periodId: string;
+}
+
+/**
+ * 갑작스런 수업 변경: 한 칸의 수업을 다른 칸으로 옮긴다. 대상 칸에 수업이 있으면 서로 바꾼다(교환 수업).
+ * 수업 기록(메모 · 첨부 · 차시)은 그대로 따라가고, 이번 주 시간표 변경(slotOverrides)으로 남는다.
+ */
+export async function moveLessonSlot(s: Settings, from: SlotRef, to: SlotRef): Promise<{ swapped: boolean; fromClass?: string; toClass?: string }> {
+  const ov = await loadOverrides(from.date < to.date ? from.date : to.date, from.date > to.date ? from.date : to.date);
+  const recFrom = await db.lessons.where('[date+periodId]').equals([from.date, from.periodId]).first();
+  const recTo = await db.lessons.where('[date+periodId]').equals([to.date, to.periodId]).first();
+  const fromClass = recFrom?.classKey ?? effectiveSlot(s, from.date, from.periodId, ov).classKey;
+  const toClass = recTo?.classKey ?? effectiveSlot(s, to.date, to.periodId, ov).classKey;
+  if (!fromClass) throw new Error('옮길 수업이 없어요.');
+  if (recFrom?.completed || recTo?.completed) throw new Error('완료 표시된 수업은 옮길 수 없어요. 수업 카드에서 완료를 먼저 취소해 주세요.');
+  const label = (r: SlotRef) => `${WEEKDAY_KO[isoWeekday(r.date)]} ${periodLabel(s, r.periodId)}`;
+  const place = async (rec: LessonRecord | undefined, at: SlotRef) => {
+    if (!rec) return;
+    await repo.update<LessonRecord>('lessons', rec.id, { date: at.date, weekday: isoWeekday(at.date), periodId: at.periodId, period: periodIndex(s, at.periodId) });
+  };
+  // 겹침을 피하려고 먼저 대상 기록을 비켜 놓는다
+  if (recTo) await repo.update<LessonRecord>('lessons', recTo.id, { periodId: `__moving__${recTo.periodId}` });
+  await place(recFrom, to);
+  if (recTo) await place({ ...recTo }, from);
+  await setSlotOverride(s, to.date, to.periodId, fromClass, toClass ? `${label(from)}과 교환` : `${label(from)}에서 옮김`, 'move');
+  await setSlotOverride(s, from.date, from.periodId, toClass ?? null, toClass ? `${label(to)}과 교환` : `${label(to)}(으)로 옮김`, 'move');
+  return { swapped: !!toClass, fromClass, toClass };
 }

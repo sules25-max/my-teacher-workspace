@@ -17,6 +17,7 @@ import { AppsScriptSyncAdapter } from '../services/sync/adapter';
 import { backupFileName, downloadJSON, exportStructureOnly, exportWorkspace, importWorkspace, startNewAcademicYear, validateExport } from '../services/backup';
 import { getAIProvider } from '../services/ai/provider';
 import { callAppsScript } from '../services/google/appsScriptClient';
+import { setDevMode, useDevMode } from '../services/devMode';
 import { PasteConnectCode, ShareConnection } from '../components/common/DeviceConnect';
 
 type Tab = 'basic' | 'periods' | 'timetable' | 'curriculum' | 'calendar' | 'sync' | 'ai' | 'backup';
@@ -594,6 +595,7 @@ function AISettings({ s }: { s: Settings }) {
       {s.ai.provider !== 'local' && <p className="muted">고른 AI가 안 되면(키 없음 · 한도 초과 · 장애) 스크립트 속성에 키가 있는 다른 AI로 자동으로 넘어가요. 순서: 고른 AI → Groq → Gemini → OpenAI</p>}
       <p className="chip">AI API 상태: {status}</p>
       {s.sync.mode === 'appsScript' && <AITestButton />}
+      <DevModeToggle />
       <p className="muted">API 키는 앱 코드나 이 기기에 저장하지 않아요. Apps Script 프로젝트 설정 → 스크립트 속성(PropertiesService)에 GROQ_API_KEY · GEMINI_API_KEY · OPENAI_API_KEY 중 쓰는 것을 넣어 주세요.</p>
     </>
   );
@@ -630,6 +632,16 @@ function AITestButton() {
         </pre>
       )}
     </div>
+  );
+}
+
+function DevModeToggle() {
+  const dev = useDevMode();
+  return (
+    <label className="check">
+      <input type="checkbox" className="checkbox" checked={dev} onChange={(e) => setDevMode(e.target.checked)} />
+      <span>개발자 모드 · AI 답변 아래에 실제로 검색 · 사용한 기록 목록을 보여줘요 (이 기기에서만)</span>
+    </label>
   );
 }
 

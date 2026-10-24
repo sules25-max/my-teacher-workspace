@@ -7,6 +7,7 @@ import { uuid, cx } from '../../utils/id';
 import { drawStroke, renderPreview, shouldAddPoint, strokeHit, strokeInRect, strokeBounds, INK_COLORS, HIGHLIGHT_COLORS, PEN_WIDTHS } from './inkRender';
 import { InkToolbar, type InkTool } from './InkToolbar';
 import { toast } from '../common/overlays';
+import { onFlushRequest } from '../../services/flush';
 
 interface Props {
   docId: string;
@@ -87,12 +88,10 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
     saveTimer.current = setTimeout(() => void flush(), 900);
   }, [flush]);
   useEffect(() => {
-    const onHide = () => {
-      if (document.visibilityState === 'hidden') void flush();
-    };
-    document.addEventListener('visibilitychange', onHide);
+    // 앱 숨김 · 페이지 닫기 · 새 버전 적용 전에 필기를 바로 저장한다(flush.ts)
+    const off = onFlushRequest(flush);
     return () => {
-      document.removeEventListener('visibilitychange', onHide);
+      off();
       clearTimeout(saveTimer.current);
       void flush();
     };

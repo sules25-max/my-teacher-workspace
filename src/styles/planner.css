@@ -691,3 +691,48 @@
   cursor: pointer;
   font-family: var(--font-title);
 }
+
+/* ---------- 끌어서 옮기기 · 보결 입력 ---------- */
+.lesson-cell.is-draggable {
+  cursor: grab;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.planner__cell.is-drop,
+.day-list li.is-drop {
+  background: #fff6e0;
+  box-shadow: inset 0 0 0 2px var(--orange);
+}
+.drag-ghost {
+  position: fixed;
+  z-index: 95;
+  transform: translate(-50%, -130%);
+  padding: 6px 12px;
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--yellow);
+  font-family: var(--font-title);
+  pointer-events: none;
+  box-shadow: var(--shadow-pop);
+}
+.week__drag-hint {
+  margin: 0 0 var(--s2);
+  font-size: var(--fs-xs);
+}
+.custom-class {
+  gap: 6px;
+  align-items: center;
+}
+.custom-class__input {
+  max-width: 180px;
+}
+.move-to {
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1.5px dashed var(--border);
+}
+.move-to__sel {
+  width: auto;
+}

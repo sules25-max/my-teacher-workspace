@@ -5,14 +5,15 @@ import { db } from '../services/localDb';
 import { useSettings } from '../hooks/useData';
 import { navigate, useRoute } from '../hooks/useRoute';
 import { openLesson } from '../components/planner/lessonDrawerStore';
-import { allClasses, effectiveSlot, loadOverrides, periodAllowsGrade, setLessonCompleted, setSlotOverride, type EffectiveSlot, type OverrideMap } from '../services/planner';
+import { allClasses, effectiveSlot, loadOverrides, moveLessonSlot, normalizeClassInput, periodAllowsGrade, setLessonCompleted, setSlotOverride, type EffectiveSlot, type OverrideMap, type SlotRef } from '../services/planner';
+import { useLessonDrag } from '../components/planner/useLessonDrag';
 import { changeSlotClass } from '../components/planner/slotChange';
 import { WEEKDAY_KO, addDays, dateOfWeekday, formatMonthDay, isoWeekday, parseISODate, startOfWeek, todayISO } from '../utils/date';
 import { holidayName } from '../data/holidays';
 import type { LessonRecord, PeriodSlot, Settings } from '../types';
 import { cx } from '../utils/id';
 import { PixelIcon } from '../components/common/Deco';
-import { confirmDialog, toast } from '../components/common/overlays';
+import { confirmDialog, promptDialog, toast } from '../components/common/overlays';
 
 export function WeekPage() {
   const s = useSettings();
@@ -39,6 +40,21 @@ export function WeekPage() {
   const ws = parseISODate(weekStart);
   const changedCount = overrides.size;
 
+  // 갑작스런 수업 변경: 칸을 끌어 다른 칸에 놓으면 옮기고, 대상 칸에 수업이 있으면 서로 바꾼다
+  const { drag, handleProps } = useLessonDrag(async (from, to) => {
+    const label = (r: SlotRef) => `${WEEKDAY_KO[isoWeekday(r.date)]} ${s.periods.find((p) => p.id === r.periodId)?.short ?? ''}`;
+    const toRec = byCell.get(`${to.date}:${to.periodId}`);
+    const toCls = toRec?.classKey ?? effectiveSlot(s, to.date, to.periodId, overrides).classKey;
+    const fromCls = byCell.get(`${from.date}:${from.periodId}`)?.classKey ?? effectiveSlot(s, from.date, from.periodId, overrides).classKey;
+    if (toCls && !(await confirmDialog({ title: '수업 교환', message: `${label(from)} ${fromCls} ↔ ${label(to)} ${toCls}\n두 수업을 서로 바꿀까요? (이번 주만, 수업 기록도 함께 옮겨져요)`, confirmLabel: '바꾸기' }))) return;
+    try {
+      const r = await moveLessonSlot(s, from, to);
+      toast(r.swapped ? `${label(from)} ↔ ${label(to)} 교환했어요.` : `${r.fromClass} 수업을 ${label(to)}(으)로 옮겼어요.`, { label: '되돌리기', run: () => void moveLessonSlot(s, to, from).catch((e) => toast((e as Error).message)) });
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  });
+
   const cellProps = (date: string, wd: number, p: PeriodSlot) => ({
     s,
     date,
@@ -47,6 +63,8 @@ export function WeekPage() {
     rec: byCell.get(`${date}:${p.id}`),
     eff: effectiveSlot(s, date, p.id, overrides),
     today,
+    dragProps: handleProps({ date, periodId: p.id }, byCell.get(`${date}:${p.id}`)?.classKey ?? effectiveSlot(s, date, p.id, overrides).classKey ?? ''),
+    dropping: !!drag?.over && drag.over.date === date && drag.over.periodId === p.id,
   });
 
   return (
@@ -105,6 +123,8 @@ export function WeekPage() {
         )
       )}
 
+      {!editing && <p className="week__drag-hint muted">수업 칸을 끌어서(iPad는 길게 눌러서) 다른 칸에 놓으면 이번 주만 옮겨져요. 수업이 있는 칸에 놓으면 서로 바꿔요.</p>}
+
       {/* 태블릿 · 데스크톱: 플래너 격자 */}
       <div className="planner-paper">
         <div className="planner" style={{ gridTemplateColumns: `minmax(64px, 92px) repeat(${days.length}, minmax(0, 1fr))` }} role="grid" aria-label="주간 수업 계획">
@@ -125,6 +145,12 @@ export function WeekPage() {
         </div>
       </div>
 
+      {drag && (
+        <div className="drag-ghost" style={{ left: drag.x, top: drag.y }} aria-hidden="true">
+          {drag.label} 옮기는 중…
+        </div>
+      )}
+
       {/* iPhone: 하루씩 보기 */}
       <div className="week-mobile">
         <div className="seg week-mobile__days" role="tablist">
@@ -139,7 +165,7 @@ export function WeekPage() {
             {s.periods.map((p) => {
               const { date, wd } = days[mobileDay];
               return (
-                <li key={p.id}>
+                <li key={p.id} data-slot={`${date}|${p.id}`} className={cx(drag?.over?.date === date && drag.over.periodId === p.id && 'is-drop')}>
                   <div className="day-list__period">
                     <span className="title-font">{p.short}</span>
                     {p.grades && <span className="muted">{p.grades.join('·')}학년</span>}
@@ -163,6 +189,8 @@ interface CellProps {
   rec?: LessonRecord;
   eff: EffectiveSlot;
   today: string;
+  dragProps?: ReturnType<ReturnType<typeof useLessonDrag>['handleProps']>;
+  dropping?: boolean;
 }
 
 function PeriodRow({
@@ -185,11 +213,14 @@ function PeriodRow({
         {p.grades && <span className="planner__grades">{p.grades.join('·')}학년</span>}
         {p.start && <span className="planner__time">{p.start}</span>}
       </div>
-      {days.map(({ wd, date }) => (
-        <div key={date} className={cx('planner__cell', date === today && 'is-today')} role="gridcell">
-          {editing ? <SlotEditor {...cellProps(date, wd, p)} /> : <LessonCell {...cellProps(date, wd, p)} />}
-        </div>
-      ))}
+      {days.map(({ wd, date }) => {
+        const cp = cellProps(date, wd, p);
+        return (
+          <div key={date} className={cx('planner__cell', date === today && 'is-today', cp.dropping && 'is-drop')} role="gridcell" data-slot={`${date}|${p.id}`}>
+            {editing ? <SlotEditor {...cp} /> : <LessonCell {...cp} />}
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -206,9 +237,21 @@ function SlotEditor({ s, date, p, rec, eff }: CellProps) {
         value={value}
         aria-label={`${date} ${p.label} 반`}
         onChange={async (e) => {
-          const next = e.target.value || null;
+          const el = e.target;
+          if (el.value === '__custom') {
+            // 보결 등: 담당 반이 아닌 학급도 직접 입력
+            el.value = value;
+            const typed = await promptDialog({ title: '학급 직접 입력 (보결 등)', message: `${date} ${p.label}에 들어간 학급을 적어 주세요.\n예) 5-3 또는 5학년 3반`, placeholder: '5-3', confirmLabel: '넣기' });
+            if (!typed) return;
+            const cls = normalizeClassInput(typed);
+            if (!cls) return toast('"5-3" 또는 "5학년 3반"처럼 적어 주세요.');
+            const isRoster = classes.some((c) => c.key === cls);
+            await changeSlotClass(s, date, p.id, cls, eff.regular, isRoster ? '반 변경' : '보결', isRoster ? 'change' : 'substitute');
+            return;
+          }
+          const next = el.value || null;
           const ok = await changeSlotClass(s, date, p.id, next, eff.regular);
-          if (!ok) e.target.value = value;
+          if (!ok) el.value = value;
         }}
       >
         <option value="">{eff.regular ? '— 휴강 / 없음' : '—'}</option>
@@ -218,6 +261,8 @@ function SlotEditor({ s, date, p, rec, eff }: CellProps) {
             {c.key === eff.regular ? ' (정기)' : ''}
           </option>
         ))}
+        {value && !classes.some((c) => c.key === value) && <option value={value}>{value} (보결)</option>}
+        <option value="__custom">✎ 직접 입력 (보결 · 다른 학급)</option>
       </select>
       {changed && (
         <button className="slot-editor__reset" onClick={() => void setSlotOverride(s, date, p.id, undefined)} aria-label="이 칸 정기 시간표로 되돌리기" title={`정기: ${eff.regular ?? '없음'}`}>
@@ -228,7 +273,7 @@ function SlotEditor({ s, date, p, rec, eff }: CellProps) {
   );
 }
 
-export function LessonCell({ date, p, rec, eff, today }: CellProps) {
+export function LessonCell({ date, p, rec, eff, today, dragProps }: CellProps) {
   const cls = rec?.classKey ?? eff.classKey;
   const open = () => openLesson(rec ? { recordId: rec.id } : { date, periodId: p.id });
   const changed = !!eff.override && !eff.cancelled;
@@ -251,13 +296,14 @@ export function LessonCell({ date, p, rec, eff, today }: CellProps) {
   const past = date < today;
   return (
     <div
-      className={cx('lesson-cell', rec?.completed && 'is-done', !rec?.lesson && 'is-unplanned', past && !rec?.completed && rec?.lesson && 'is-missed', changed && 'is-changed')}
+      className={cx('lesson-cell', rec?.completed && 'is-done', !rec?.lesson && 'is-unplanned', past && !rec?.completed && rec?.lesson && 'is-missed', changed && 'is-changed', !rec?.completed && 'is-draggable')}
       data-grade={cls.split('-')[0]}
+      {...(rec?.completed ? {} : dragProps)}
     >
       <button className="lesson-cell__main" onClick={open}>
         <span className="lesson-cell__class title-font">
           {cls}
-          {changed && <span className="lesson-cell__badge">변경</span>}
+          {changed && <span className="lesson-cell__badge">{eff.override?.kind === 'substitute' ? '보결' : eff.override?.kind === 'move' ? '이동' : '변경'}</span>}
         </span>
         {rec?.lesson ? (
           <>

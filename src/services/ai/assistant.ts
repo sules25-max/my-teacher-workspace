@@ -16,8 +16,9 @@ import {
   loadOverrides,
   suggestNextFor,
 } from '../planner';
-import { searchAll, KIND_LABEL } from '../search';
 import type { Route } from '../../hooks/useRoute';
+import { askWithRecords, NOT_FOUND, type AIDebug, type GroundedReply } from './grounded';
+import type { PreparedImage, VisionResult } from './vision';
 
 // AI 비서의 기본 동작은 기기 안에서 계산한다(외부 전송 없음).
 // READ는 바로, WRITE/DELETE는 ProposedAction으로 돌려주고 사용자가 [반영]을 눌러야 실행된다.
@@ -41,11 +42,15 @@ export interface AssistantReply {
   expression: AssistantExpression;
   action?: ProposedAction;
   links?: ReplyLink[];
+  footer?: string; // "관련 기록 7건 확인" · "총 43개 기록 중 43개 분석"
+  debug?: AIDebug; // 개발자 모드에서만 보이는 검색 · 사용 기록
+  vision?: { result: VisionResult; images: PreparedImage[]; question: string }; // 이미지 분석 결과(저장 액션용)
 }
 
-export type QuickActionId = 'week' | 'tasks' | 'meeting' | 'next' | 'lagging' | 'find' | 'ask';
+export type QuickActionId = 'daily' | 'week' | 'tasks' | 'meeting' | 'next' | 'lagging' | 'find' | 'ask';
 
 export const QUICK_ACTIONS: { id: QuickActionId; label: string }[] = [
+  { id: 'daily', label: '✨ 오늘 하루 정리' },
   { id: 'week', label: '이번 주 수업 정리' },
   { id: 'tasks', label: '미완료 업무 보기' },
   { id: 'meeting', label: '회의 메모 정리' },
@@ -282,38 +287,25 @@ export async function findLagging(s: Settings): Promise<AssistantReply> {
   };
 }
 
-export async function findMemos(q: string): Promise<AssistantReply> {
-  const res = await searchAll(q, 8);
-  if (!res.length) return { text: `“${q}”로는 찾은 게 없어. 다른 단어로 찾아볼까?`, expression: 'worried' };
+/** 근거 검색 결과를 비서 답변 형태로 바꾼다 */
+export function fromGrounded(g: GroundedReply): AssistantReply {
+  const notFound = g.text.trim() === NOT_FOUND;
   return {
-    text: `“${q}” 관련해서 ${res.length}개 찾았어.\n${res
-      .slice(0, 6)
-      .map((r) => `• [${KIND_LABEL[r.kind]}] ${r.title}${r.date ? ` · ${formatShort(r.date)}` : ''}${r.snippet ? `\n   ${r.snippet}` : ''}`)
-      .join('\n')}`,
-    expression: 'happy',
-    links: res.slice(0, 6).map((r) => (r.kind === 'lesson' ? { label: r.title, lessonId: r.id } : { label: r.title, href: r.href })),
+    text: g.text,
+    expression: notFound ? 'worried' : g.debug.mode === 'summary' ? 'confident' : 'happy',
+    footer: notFound ? `검색 조건: ${g.debug.conditions}` : g.footer,
+    debug: g.debug,
+    links: g.sources.slice(0, 6).map((u) => (u.lessonRecordId ? { label: `${u.date ?? ''} ${u.title}`, lessonId: u.lessonRecordId } : { label: `${u.date ?? ''} ${u.title}`, href: u.href })),
   };
 }
 
-/** 외부 AI 없이도 자주 묻는 말은 알아듣도록 간단한 의도 분류를 둔다. */
-export async function localAnswer(q: string, s: Settings, route: Route): Promise<AssistantReply> {
-  if (/(할\s*일|업무|마감|투두|todo)/i.test(q)) return openTasks();
-  if (/(진도|느린|늦은)/.test(q)) return findLagging(s);
-  if (/(다음\s*차시|준비물|다음\s*수업)/.test(q)) return prepareNext(s);
-  if (/(회의|부장)/.test(q) && /(정리|할\s*일)/.test(q)) return tidyMeeting(route);
-  if (/(이번\s*주|주간)/.test(q)) return weekSummary();
-  const words = q
-    .replace(/(찾아\s*줘|찾아줘|알려\s*줘|보여\s*줘|메모|지난번|지난|관련|좀|에서|의)/g, ' ')
-    .split(/\s+/)
-    .filter((w) => w.length > 1)
-    .slice(0, 3)
-    .join(' ');
-  if (words) {
-    const r = await findMemos(words);
-    if (!r.text.includes('찾은 게 없어')) return r;
-  }
-  return {
-    text: '지금은 기기 안 비서 모드라 정해진 일만 할 수 있어. 아래 빠른 작업을 써 보거나, 설정에서 Gemini/OpenAI를 연결하면 자유 질문도 답할 수 있어.',
-    expression: 'shy',
-  };
+/** "지난 메모 찾기": AI 없이 기기 안 기록만 검색해서 보여준다 */
+export async function findMemos(q: string, s: Settings): Promise<AssistantReply> {
+  return fromGrounded(await askWithRecords(s, null, q, []));
+}
+
+/** 외부 AI가 없을 때: 검색한 기록을 그대로 보여준다(지어내는 문장 없음) */
+export async function localAnswer(q: string, s: Settings, _route: Route): Promise<AssistantReply> {
+  void _route;
+  return fromGrounded(await askWithRecords(s, null, q, []));
 }

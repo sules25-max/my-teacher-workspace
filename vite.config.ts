@@ -8,7 +8,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 새 버전은 자동 새로고침하지 않고, 입력을 저장한 뒤 사용자가 적용한다(main.tsx)
+      registerType: 'prompt',
       manifestFilename: 'manifest.webmanifest',
       includeAssets: ['aichatbotseat.png', 'icons/icon-180.png'],
       manifest: {

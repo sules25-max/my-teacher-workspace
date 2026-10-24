@@ -7,6 +7,7 @@ import { ConnectPage } from './components/layout/ConnectPage';
 import { DialogHost, ToastHost } from './components/common/overlays';
 import { SearchPalette } from './components/common/SearchPalette';
 import { LessonDrawerHost } from './components/planner/LessonDrawer';
+import { DailySummaryHost } from './components/assistant/DailySummary';
 import { AssistantFloatingButton } from './components/assistant/AssistantFloatingButton';
 import { TodayPage } from './pages/TodayPage';
 import { WeekPage } from './pages/WeekPage';
@@ -19,6 +20,7 @@ import { TasksPage } from './pages/TasksPage';
 import { ArchivePage } from './pages/ArchivePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { startSyncEngine } from './services/sync/syncEngine';
+import { requestPersistence } from './services/localDb';
 
 const PAGES: Record<string, () => ReactElement | null> = {
   today: TodayPage,
@@ -40,6 +42,8 @@ export function App() {
 
   useEffect(() => {
     void ensureSettings().then(startSyncEngine);
+    // 브라우저가 공간 부족 시 데이터를 지우지 않도록 영구 저장을 요청한다(이미 허용됐으면 그대로)
+    void requestPersistence();
   }, []);
 
   useEffect(() => {
@@ -70,6 +74,7 @@ export function App() {
         <Page />
       </AppShell>
       <LessonDrawerHost />
+      <DailySummaryHost />
       <AssistantFloatingButton />
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <DialogHost />

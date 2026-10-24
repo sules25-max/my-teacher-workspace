@@ -1,7 +1,7 @@
 import { db } from '../../services/localDb';
 import * as repo from '../../services/repo';
 import { setSlotOverride, periodIndex } from '../../services/planner';
-import type { LessonRecord, Settings } from '../../types';
+import type { LessonRecord, Settings, SlotOverride } from '../../types';
 import { parseClassKey } from '../../utils/id';
 import { confirmDialog, toast } from '../common/overlays';
 
@@ -10,7 +10,15 @@ import { confirmDialog, toast } from '../common/overlays';
  * next: 반(classKey) / null: 휴강·수업 없음
  * 이미 적어 둔 수업 기록이 있으면 새 반으로 옮기거나(휴강이면) 지울지 확인한다.
  */
-export async function changeSlotClass(s: Settings, date: string, periodId: string, next: string | null, regular: string | undefined, note?: string): Promise<boolean> {
+export async function changeSlotClass(
+  s: Settings,
+  date: string,
+  periodId: string,
+  next: string | null,
+  regular: string | undefined,
+  note?: string,
+  kind?: SlotOverride['kind'],
+): Promise<boolean> {
   const rec = await db.lessons.where('[date+periodId]').equals([date, periodId]).first();
   if (rec && rec.classKey !== next) {
     if (rec.completed) {
@@ -43,6 +51,6 @@ export async function changeSlotClass(s: Settings, date: string, periodId: strin
     }
   }
   // 정기 시간표에 반이 없는 칸을 비우는 것은 "변경 없음"
-  await setSlotOverride(s, date, periodId, next === null && !regular ? undefined : next, note);
+  await setSlotOverride(s, date, periodId, next === null && !regular ? undefined : next, note, kind);
   return true;
 }

@@ -15,11 +15,16 @@ export interface AIContext {
  * AI 제공자 어댑터. API 키는 프런트엔드에 두지 않는다.
  * Groq/Gemini/OpenAI 호출은 Apps Script가 PropertiesService에 저장된 키로 대신 수행한다.
  */
+export interface ChatOptions {
+  system?: string; // 이 요청에만 쓰는 지시문(검색 근거 답변 · 요약 단계 등)
+  maxTokens?: number;
+}
+
 export interface AIProvider {
   readonly id: AIProviderId;
   readonly label: string;
   available(): Promise<boolean>;
-  chat(messages: AIMessage[], context: AIContext | null): Promise<string>;
+  chat(messages: AIMessage[], context: AIContext | null, opts?: ChatOptions): Promise<string>;
 }
 
 const SYSTEM = [
@@ -38,12 +43,19 @@ class AppsScriptProxyProvider implements AIProvider {
   async available() {
     return !!(await getAppsScriptConfig()) && navigator.onLine;
   }
-  async chat(messages: AIMessage[], context: AIContext | null) {
+  async chat(messages: AIMessage[], context: AIContext | null, opts: ChatOptions = {}) {
     const res = await callAppsScript<{ text: string; provider?: string; fallback?: boolean }>(
       'aiChat',
-      { provider: this.id, model: this.model, system: SYSTEM, context: context?.text ?? '', messages: messages.slice(-8) },
+      {
+        provider: this.id,
+        model: this.model,
+        system: opts.system ?? SYSTEM,
+        context: context?.text ?? '',
+        messages: messages.slice(-8),
+        maxTokens: opts.maxTokens,
+      },
       undefined,
-      60000,
+      90000,
     );
     const names: Record<string, string> = { groq: 'Groq', gemini: 'Gemini', openai: 'OpenAI' };
     // 고른 AI 대신 다른 AI가 답했으면 알려 준다

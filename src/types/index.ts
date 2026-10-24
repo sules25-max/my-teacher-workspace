@@ -138,13 +138,15 @@ export interface Task extends BaseRecord {
   sourceLabel?: string;
 }
 
-export type NoteKind = 'quick' | 'day';
+/** quick: 빠른 메모 · day: 날짜 메모 · summary: 하루 정리(저장한 것) · inbox: AI Inbox(AI 분석 결과를 사용자가 저장) */
+export type NoteKind = 'quick' | 'day' | 'summary' | 'inbox';
 
 /** 빠른 메모, 월간 날짜별 메모 */
 export interface Note extends BaseRecord {
   kind: NoteKind;
   date: string;
   text: string;
+  title?: string;
   inkDocId?: string;
   attachments: string[];
 }
@@ -252,6 +254,8 @@ export interface SlotOverride extends BaseRecord {
   periodId: string;
   classKey: string | null;
   note?: string;
+  /** 변경 종류(선택): change 반 바꾸기 · cancel 휴강 · substitute 보결 · move 다른 칸으로 옮김 */
+  kind?: 'change' | 'cancel' | 'substitute' | 'move';
 }
 
 export type SyncTable =

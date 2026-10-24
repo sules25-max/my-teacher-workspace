@@ -95,6 +95,9 @@ var ACTIONS = {
   aiTest: function () {
     return { lines: testAI() };
   },
+  aiVision: function (p) {
+    return aiVision(p);
+  },
   // 역할별 API (다른 클라이언트나 자동화에서 쓰기 쉽도록 제공)
   getTodayPlan: function (p) {
     return getTodayPlan(p.date);
@@ -152,8 +155,9 @@ function syncRecords(changes) {
       byTable[table].forEach(function (c) {
         var row = index[c.id];
         var existing = row ? sheet.getRange(row, 1, 1, HEADER.length).getValues()[0] : null;
-        // 서버에 더 최근 값이 있으면 덮어쓰지 않는다(last-write-wins)
-        if (existing && String(existing[1]) > String(c.updatedAt) && c.op !== 'delete') return;
+        // 서버에 더 최근 값이 있으면 덮어쓰지 않는다(last-write-wins).
+        // 삭제도 마찬가지: 다른 기기가 삭제 이후에 고친 기록은 지우지 않는다.
+        if (existing && String(existing[1]) > String(c.updatedAt)) return;
         var values;
         if (c.op === 'delete') {
           values = [c.id, c.updatedAt, now, true, '(삭제됨)', '', ''];
@@ -180,8 +184,23 @@ function syncRecords(changes) {
   }
 }
 
+var PULL_LOOKBACK_MS = 2 * 60 * 1000;
+
 function pullChanges(since) {
+  // 다른 기기가 올리는 중에 읽으면 그 기록을 영영 놓칠 수 있어서, 올리기와 같은 잠금을 쓰고
+  // 기준 시각을 2분 앞당겨 다시 확인한다(중복은 기기에서 updatedAt 비교로 걸러진다).
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    return pullChangesLocked_(since);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function pullChangesLocked_(since) {
   var serverTime = new Date().toISOString();
+  var after = since ? new Date(new Date(since).getTime() - PULL_LOOKBACK_MS).toISOString() : '';
   var out = [];
   Object.keys(SHEETS).forEach(function (table) {
     var sheet = getSheet_(table);
@@ -189,7 +208,7 @@ function pullChanges(since) {
     if (last < 2) return;
     var rows = sheet.getRange(2, 1, last - 1, HEADER.length).getValues();
     rows.forEach(function (r) {
-      if (since && String(r[2]) <= String(since)) return;
+      if (after && String(r[2]) <= after) return;
       if (r[3] === true || r[3] === 'TRUE') {
         out.push({ table: table, op: 'delete', id: String(r[0]), updatedAt: String(r[1]) });
         return;
@@ -393,8 +412,10 @@ var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'; // Groq는 Ope
  */
 function aiChat(p) {
   var system = String(p.system || '');
-  var context = String(p.context || '').slice(0, 6000);
+  // 앱이 검색 · 묶음 단위로 크기를 조절해 보낸다. 서버는 안전 상한만 둔다.
+  var context = String(p.context || '').slice(0, 40000);
   var messages = (p.messages || []).slice(-8);
+  var maxTokens = Math.max(256, Math.min(4096, Number(p.maxTokens) || 1500));
   var first = AI_PROVIDERS[p.provider] ? p.provider : AI_ORDER[0];
   var chain = [first].concat(AI_ORDER.filter(function (x) { return x !== first; }));
   var errors = [];
@@ -403,7 +424,7 @@ function aiChat(p) {
     var key = aiKey_(id);
     if (!key) continue;
     try {
-      var r = callWithModelRecovery_(id, key, id === first ? p.model : '', system, context, messages);
+      var r = callWithModelRecovery_(id, key, id === first ? p.model : '', system, context, messages, maxTokens);
       return { text: r.text, provider: id, model: r.model, fallback: id !== first };
     } catch (e) {
       errors.push(id + ': ' + errMsg_(e));
@@ -417,12 +438,12 @@ function aiKey_(id) {
   return v ? String(v).replace(/\s+/g, '') : ''; // 붙여 넣을 때 섞인 공백·줄바꿈 제거
 }
 
-function callWithModelRecovery_(id, key, userModel, system, context, messages) {
+function callWithModelRecovery_(id, key, userModel, system, context, messages, maxTokens) {
   var cache = CacheService.getScriptCache();
   var propModel = String(PropertiesService.getScriptProperties().getProperty(AI_PROVIDERS[id].modelProp) || '').trim();
   var model = userModel || propModel || cache.get('ai_model_' + id) || AI_PROVIDERS[id].model;
   try {
-    return { text: callProvider_(id, key, model, system, context, messages), model: model };
+    return { text: callProvider_(id, key, model, system, context, messages, maxTokens), model: model };
   } catch (e) {
     if (!looksLikeModelError_(e)) throw e;
     var picked = '';
@@ -433,14 +454,14 @@ function callWithModelRecovery_(id, key, userModel, system, context, messages) {
     }
     if (!picked) throw e;
     cache.put('ai_model_' + id, picked, 21600);
-    return { text: callProvider_(id, key, picked, system, context, messages), model: picked };
+    return { text: callProvider_(id, key, picked, system, context, messages, maxTokens), model: picked };
   }
 }
 
-function callProvider_(id, key, model, system, context, messages) {
+function callProvider_(id, key, model, system, context, messages, maxTokens) {
   var text = id === 'gemini'
-    ? geminiChat_(key, model, system, context, messages)
-    : openAICompatChat_(id === 'groq' ? GROQ_URL : OPENAI_URL, key, model, system, context, messages);
+    ? geminiChat_(key, model, system, context, messages, maxTokens)
+    : openAICompatChat_(id === 'groq' ? GROQ_URL : OPENAI_URL, key, model, system, context, messages, maxTokens);
   if (!text || !String(text).trim()) throw new Error('빈 답변 (' + model + ')');
   return text;
 }
@@ -488,7 +509,7 @@ function listModels_(id, key) {
     .sort().reverse();
 }
 
-function geminiChat_(key, model, system, context, messages) {
+function geminiChat_(key, model, system, context, messages, maxTokens) {
   var contents = messages.map(function (m) {
     return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] };
   });
@@ -501,7 +522,7 @@ function geminiChat_(key, model, system, context, messages) {
       system_instruction: { parts: [{ text: system + (context ? '\n\n[참고 자료]\n' + context : '') }] },
       contents: contents,
       // 생각(thinking) 토큰이 한도를 다 쓰면 답이 비므로 넉넉히 준다
-      generationConfig: { maxOutputTokens: 4096, temperature: 0.4 },
+      generationConfig: { maxOutputTokens: Math.max(2048, (maxTokens || 1500) * 2), temperature: 0.3 },
     }),
   });
   var j = parseJson_(res, 'Gemini');
@@ -512,7 +533,7 @@ function geminiChat_(key, model, system, context, messages) {
     .join('');
 }
 
-function openAICompatChat_(url, key, model, system, context, messages) {
+function openAICompatChat_(url, key, model, system, context, messages, maxTokens) {
   var msgs = [{ role: 'system', content: system + (context ? '\n\n[참고 자료]\n' + context : '') }].concat(
     messages.map(function (m) {
       return { role: m.role, content: m.content };
@@ -523,7 +544,7 @@ function openAICompatChat_(url, key, model, system, context, messages) {
     contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + key },
     muteHttpExceptions: true,
-    payload: JSON.stringify({ model: model, messages: msgs, max_tokens: 2048, temperature: 0.4 }),
+    payload: JSON.stringify({ model: model, messages: msgs, max_tokens: maxTokens || 1500, temperature: 0.3 }),
   });
   var j = parseJson_(res, model);
   return j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : '';
@@ -546,6 +567,78 @@ function parseJson_(res, label) {
 
 function errMsg_(e) {
   return String(e && e.message ? e.message : e);
+}
+
+// ---------------------------------------------------------------- 이미지 분석(vision)
+// Groq 공식 문서(console.groq.com/docs/vision) 기준: 이미지 입력 모델 qwen/qwen3.8-27b,
+// user content 배열에 {type:'image_url', image_url:{url:'data:image/jpeg;base64,...'}}, 요청당 이미지 3장까지.
+// 텍스트 모델(llama-3.3-70b-versatile)은 이미지를 받지 못하므로 이미지 요청만 여기서 따로 보낸다.
+// 모델은 스크립트 속성 GROQ_VISION_MODEL / GEMINI_VISION_MODEL 로 바꿀 수 있다.
+
+var VISION_DEFAULTS = { groq: 'qwen/qwen3.8-27b', gemini: 'gemini-3.5-flash-lite' };
+var VISION_MAX_IMAGES = 3;
+
+function aiVision(p) {
+  var images = (p.images || []).slice(0, VISION_MAX_IMAGES);
+  if (!images.length) throw new Error('이미지가 없어요.');
+  var system = String(p.system || '');
+  var question = String(p.question || '이 이미지 내용을 알려줘.');
+  var props = PropertiesService.getScriptProperties();
+  var order = p.provider === 'gemini' ? ['gemini', 'groq'] : ['groq', 'gemini'];
+  var errors = [];
+  for (var i = 0; i < order.length; i++) {
+    var id = order[i];
+    var key = aiKey_(id);
+    if (!key) continue;
+    var model = String(props.getProperty(id === 'groq' ? 'GROQ_VISION_MODEL' : 'GEMINI_VISION_MODEL') || '').trim() || VISION_DEFAULTS[id];
+    try {
+      var text = id === 'groq' ? groqVision_(key, model, system, question, images) : geminiVision_(key, model, system, question, images);
+      if (!text || !String(text).trim()) throw new Error('빈 답변');
+      return { text: text, provider: id, model: model, fallback: i > 0 };
+    } catch (e) {
+      errors.push(id + ': ' + errMsg_(e));
+    }
+  }
+  throw new Error(errors.length ? '이미지 분석 실패 (' + errors.join(' / ') + ')' : '이미지 분석에 쓸 GROQ_API_KEY 또는 GEMINI_API_KEY가 없어요.');
+}
+
+function groqVision_(key, model, system, question, images) {
+  var content = [{ type: 'text', text: question }].concat(
+    images.map(function (im) {
+      return { type: 'image_url', image_url: { url: 'data:' + (im.mimeType || 'image/jpeg') + ';base64,' + im.base64 } };
+    }),
+  );
+  var body = { model: model, messages: [{ role: 'system', content: system }, { role: 'user', content: content }], max_tokens: 2048, temperature: 0.2, reasoning_effort: 'none' };
+  var res = UrlFetchApp.fetch(GROQ_URL, { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + key }, muteHttpExceptions: true, payload: JSON.stringify(body) });
+  if (res.getResponseCode() === 400 && /reasoning/i.test(res.getContentText())) {
+    // 모델이 reasoning_effort를 받지 않으면 빼고 다시
+    delete body.reasoning_effort;
+    res = UrlFetchApp.fetch(GROQ_URL, { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + key }, muteHttpExceptions: true, payload: JSON.stringify(body) });
+  }
+  var j = parseJson_(res, model);
+  var msg = j.choices && j.choices[0] && j.choices[0].message;
+  return msg ? String(msg.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim() : '';
+}
+
+function geminiVision_(key, model, system, question, images) {
+  var parts = [{ text: question }].concat(
+    images.map(function (im) {
+      return { inline_data: { mime_type: im.mimeType || 'image/jpeg', data: im.base64 } };
+    }),
+  );
+  var res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { 'x-goog-api-key': key },
+    muteHttpExceptions: true,
+    payload: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts: parts }], generationConfig: { maxOutputTokens: 4096, temperature: 0.2 } }),
+  });
+  var j = parseJson_(res, 'Gemini ' + model);
+  var out = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+  return out
+    .filter(function (x) { return !x.thought; })
+    .map(function (x) { return x.text || ''; })
+    .join('');
 }
 
 /**

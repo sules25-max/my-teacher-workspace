@@ -1928,3 +1928,85 @@ button.archive-row:hover {
     height: 40px;
   }
 }
+
+/* ---------- 오늘 하루 정리 ---------- */
+.hero__side {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+.hero__daily {
+  white-space: nowrap;
+}
+.daily {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--s4);
+  padding: var(--s4);
+}
+.daily__groups {
+  display: grid;
+  gap: 4px;
+  margin-bottom: var(--s3);
+}
+.daily__groups summary {
+  cursor: pointer;
+  min-height: 34px;
+}
+.daily__items {
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 6px 16px;
+  font-size: var(--fs-sm);
+}
+.daily__progress {
+  padding: var(--s3);
+  border: 1.5px dashed var(--blue);
+  border-radius: var(--radius);
+  background: var(--surface-blue);
+}
+.daily__result {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  border: var(--line) solid var(--navy);
+  border-radius: var(--radius-lg);
+  background: #fffefa;
+}
+.daily__count {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.daily__todos {
+  display: grid;
+  gap: 6px;
+  padding: var(--s3);
+  border: 1.5px dashed var(--orange);
+  border-radius: var(--radius);
+  background: #fffaf0;
+}
+.daily__todos .chip,
+.daily__actions .btn {
+  white-space: nowrap;
+}
+.rich {
+  display: grid;
+  gap: 6px;
+}
+.rich__h {
+  margin-top: 6px;
+  font-size: var(--fs-md);
+}
+.rich__list {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 3px;
+}
+.note-sticky__kind {
+  margin-left: 6px;
+  font-family: var(--font-body);
+}

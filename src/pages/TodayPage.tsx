@@ -10,6 +10,7 @@ import { effectiveSlot, loadOverrides, setLessonCompleted, suggestNextFor, type 
 import { addTask, sortTasks, taskBucket } from '../services/tasks';
 import { openMeteoWeather, type WeatherNow } from '../services/weather/weather';
 import { TaskItem } from '../components/tasks/TaskItem';
+import { openDailySummary } from '../components/assistant/DailySummary';
 import { EmptyState } from '../components/common/EmptyState';
 import { Deco, PixelIcon } from '../components/common/Deco';
 import { toast } from '../components/common/overlays';
@@ -42,7 +43,12 @@ export function TodayPage() {
             {hol && <span className="stamp stamp--pink hero__hol">{hol}</span>}
           </p>
         </div>
-        <WeatherWidget s={s} />
+        <div className="hero__side">
+          <WeatherWidget s={s} />
+          <button className="btn btn--sm btn--title hero__daily" onClick={openDailySummary}>
+            ✨ 오늘 하루 정리
+          </button>
+        </div>
       </section>
 
       <div className="today-grid">
@@ -321,7 +327,7 @@ function RecentMemos() {
   const items: MemoItem[] = useMemo(() => {
     if (!data) return [];
     return [
-      ...data.notes.filter((n) => n.text.trim()).map((n) => ({ id: n.id, kind: n.kind === 'quick' ? '메모' : '날짜 메모', title: formatShort(n.date), text: n.text, at: n.updatedAt, open: () => navigate(n.kind === 'day' ? `month?d=${n.date}` : 'archive?tab=notes') })),
+      ...data.notes.filter((n) => n.text.trim()).map((n) => ({ id: n.id, kind: { quick: '메모', day: '날짜 메모', summary: '하루 정리', inbox: 'AI Inbox' }[n.kind], title: formatShort(n.date), text: n.text, at: n.updatedAt, open: () => navigate(n.kind === 'day' ? `month?d=${n.date}` : 'archive?tab=notes') })),
       ...data.lessons.map((l) => ({ id: l.id, kind: '수업', title: `${l.classKey} ${l.lesson} ${l.session}차시`, text: l.memo ?? '', at: l.updatedAt, open: () => openLesson({ recordId: l.id }) })),
       ...data.meetings.map((m) => ({ id: m.id, kind: '회의', title: m.title, text: [m.announcements, m.decisions, m.memo].filter(Boolean).join(' · '), at: m.updatedAt, open: () => navigate(`work/${m.id}`) })),
     ]

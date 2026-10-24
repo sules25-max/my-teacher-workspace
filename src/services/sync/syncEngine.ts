@@ -48,24 +48,37 @@ function stripSettings(s: Settings): Record<string, unknown> {
   return rest as unknown as Record<string, unknown>;
 }
 
-async function uploadPendingAttachments(adapter: SyncAdapter) {
+/** 첨부 하나가 실패해도 나머지 동기화는 계속한다. 실패한 첨부는 기기에 그대로 남고 다음 회차에 다시 시도한다. */
+async function uploadPendingAttachments(adapter: SyncAdapter): Promise<number> {
   const pending = await db.attachments.filter((a) => !!a.blob && !a.driveFileId && a.kind !== 'link').toArray();
+  let failed = 0;
   for (const a of pending) {
-    const base64 = await blobToBase64(a.blob!);
-    const { fileId } = await adapter.uploadAttachment({ id: a.id, name: a.name, mimeType: a.mimeType, kind: a.kind, base64 });
-    await db.transaction('rw', [db.attachments, db.syncQueue], async () => {
-      await db.attachments.update(a.id, { driveFileId: fileId });
-      await db.syncQueue.put({ key: `attachments:${a.id}`, table: 'attachments', recordId: a.id, op: 'upsert', at: new Date().toISOString(), tries: 0 });
-    });
+    try {
+      const base64 = await blobToBase64(a.blob!);
+      const { fileId } = await adapter.uploadAttachment({ id: a.id, name: a.name, mimeType: a.mimeType, kind: a.kind, base64 });
+      await db.transaction('rw', [db.attachments, db.syncQueue], async () => {
+        await db.attachments.update(a.id, { driveFileId: fileId });
+        await db.syncQueue.put({ key: `attachments:${a.id}`, table: 'attachments', recordId: a.id, op: 'upsert', at: new Date().toISOString(), tries: 0 });
+      });
+    } catch {
+      failed++;
+    }
   }
+  return failed;
 }
+
+const MAX_BATCH_BYTES = 1_500_000; // Apps Script 요청 한 번에 너무 큰 데이터를 보내지 않는다
 
 async function pushQueue(adapter: SyncAdapter) {
   for (;;) {
-    const items = await db.syncQueue.orderBy('at').limit(40).toArray();
-    if (!items.length) return;
+    const candidates = await db.syncQueue.orderBy('at').limit(40).toArray();
+    if (!candidates.length) return;
     const changes: SyncChange[] = [];
-    for (const it of items) {
+    const items: typeof candidates = [];
+    let bytes = 0;
+    for (const it of candidates) {
+      if (items.length && bytes > MAX_BATCH_BYTES) break; // 남은 항목은 다음 묶음으로
+      items.push(it);
       if (it.op === 'delete') {
         changes.push({ table: it.table, op: 'delete', id: it.recordId, updatedAt: it.at });
         continue;
@@ -81,6 +94,7 @@ async function pushQueue(adapter: SyncAdapter) {
       if (!rec) continue;
       const { blob: _blob, ...clean } = rec;
       void _blob;
+      bytes += JSON.stringify(clean).length;
       changes.push({ table: it.table, op: 'upsert', id: it.recordId, updatedAt: rec.updatedAt, record: clean });
     }
     await adapter.push(changes);
@@ -111,11 +125,16 @@ async function applyPull(adapter: SyncAdapter, since?: string): Promise<{ server
     }
     if (!SYNC_TABLES.includes(ch.table)) continue;
     const t = db.table(ch.table) as Table<Record<string, unknown>, string>;
+    const local = (await t.get(ch.id)) as (Record<string, unknown> & { updatedAt: string }) | undefined;
     if (ch.op === 'delete') {
+      // 이 기기에서 삭제 이후에 고친 기록이면 지우지 않고 다시 올린다(더 최근 수정 보호)
+      if (local && local.updatedAt > ch.updatedAt) {
+        await db.syncQueue.put({ key, table: ch.table, recordId: ch.id, op: 'upsert', at: new Date().toISOString(), tries: 0 });
+        continue;
+      }
       await t.delete(ch.id);
       continue;
     }
-    const local = (await t.get(ch.id)) as (Record<string, unknown> & { updatedAt: string }) | undefined;
     if (local && local.updatedAt >= ch.updatedAt) continue;
     const next = { ...ch.record, id: ch.id };
     if (ch.table === 'attachments' && local?.blob) (next as Partial<Attachment>).blob = local.blob as Blob;
@@ -146,7 +165,7 @@ export async function runSync(): Promise<void> {
     const firstSync = !before?.sync.lastSyncAt;
     // 새로 연결한 기기는 자기 설정으로 클라우드 설정을 덮어쓰지 않는다(클라우드 설정을 먼저 받는다)
     if (firstSync) await db.syncQueue.delete('settings:main');
-    await uploadPendingAttachments(adapter);
+    const failedUploads = await uploadPendingAttachments(adapter);
     await pushQueue(adapter);
     const { serverTime, gotSettings } = await applyPull(adapter, before?.sync.lastSyncAt);
     const settings = await db.settings.get('main');
@@ -159,7 +178,12 @@ export async function runSync(): Promise<void> {
       await db.syncQueue.put({ key: 'settings:main', table: 'settings', recordId: 'main', op: 'upsert', at: new Date().toISOString(), tries: 0 });
       rerun = true;
     }
-    setSyncState({ status: 'saved', pending: await pendingCount(), lastSyncAt: serverTime, message: undefined });
+    setSyncState({
+      status: 'saved',
+      pending: await pendingCount(),
+      lastSyncAt: serverTime,
+      message: failedUploads ? `첨부 ${failedUploads}개는 아직 올리지 못했어요(기기에는 안전하게 있어요). 다음에 다시 시도해요.` : undefined,
+    });
   } catch (e) {
     setSyncState({ status: 'error', pending: await pendingCount(), message: (e as Error).message });
   } finally {

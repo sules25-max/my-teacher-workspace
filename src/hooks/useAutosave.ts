@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { onFlushRequest } from '../services/flush';
 
 /**
  * 입력 중에는 로컬 상태만 바꾸고, 멈춘 뒤 ms 후 저장한다.
@@ -51,8 +52,11 @@ export function useAutosave<T>(key: string, external: T, save: (v: T) => void | 
     if (!pending.current) return;
     clearTimeout(timer.current);
     pending.current = false;
-    void saveRef.current(latest.current);
+    return saveRef.current(latest.current);
   }, []);
+
+  // 새 버전 적용 · 앱 숨김 · 페이지 닫기 직전에 대기 중인 입력을 바로 저장한다
+  useEffect(() => onFlushRequest(flush), [flush]);
 
   return [value, change, flush] as const;
 }

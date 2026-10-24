@@ -363,3 +363,113 @@
   border-radius: 12px;
   box-shadow: 0 4px 0 var(--navy);
 }
+
+/* 답변 근거 · 분석 개수 표시 */
+.ai-msg__footer {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.ai-msg__progress {
+  font-size: var(--fs-xs);
+}
+.ai-debug {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #fbfdff;
+  font-size: 0.74rem;
+}
+.ai-debug summary {
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--navy-soft);
+}
+.ai-debug__body {
+  display: grid;
+  gap: 4px;
+  padding: 0 8px 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  overflow-wrap: anywhere;
+}
+.ai-debug__body ul {
+  display: grid;
+  gap: 2px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+/* ---------- 이미지 첨부 · 분석 ---------- */
+.ai-panel.is-dragover {
+  box-shadow: 0 0 0 4px var(--yellow), var(--shadow-float);
+}
+.ai-attach {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ai-attach__item {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border: var(--line) solid var(--navy);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-blue);
+}
+.ai-attach__item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ai-attach__item--loading {
+  display: grid;
+  place-items: center;
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+.ai-attach__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid var(--navy);
+  border-radius: 50%;
+  background: #fff;
+  line-height: 1;
+}
+.ai-msg__images {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.ai-msg__images img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border: 1.5px solid var(--navy);
+  border-radius: 8px;
+}
+.vision-actions {
+  display: grid;
+  gap: 6px;
+}
+.vision-actions__btn {
+  min-height: 32px;
+  cursor: pointer;
+}
+.vision-preview {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: var(--line) dashed var(--blue);
+  border-radius: var(--radius);
+  background: var(--surface-blue);
+}
+.vision-preview__title {
+  font-size: var(--fs-sm);
+}
+.vision-preview__note {
+  font-size: var(--fs-xs);
+}
