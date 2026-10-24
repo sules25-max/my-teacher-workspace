@@ -17,7 +17,7 @@
 .agent-scene--mini {
   width: 148px;
   aspect-ratio: 4 / 3;
-  border-radius: 12px;
+  border-radius: 0;
 }
 .agent-scene__bg {
   position: absolute;
@@ -43,7 +43,7 @@
   position: absolute;
   left: 0;
   transform: translateX(-50%);
-  filter: drop-shadow(0 3px 0 rgba(21, 42, 75, 0.25));
+  filter: drop-shadow(0 3px 4px rgba(45, 36, 27, 0.2));
 }
 .agent-scene__char img:first-child {
   display: block;
@@ -147,7 +147,7 @@
 }
 .agent-card--mini {
   width: 148px;
-  border-radius: 12px;
+  border-radius: 0;
 }
 .agent-card .agent-scene {
   border: 0;
@@ -167,7 +167,7 @@
 }
 .agent-scene__place {
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--navy);
   color: #fff;
   font-size: 0.72rem;

@@ -49,7 +49,7 @@
   border: var(--line) solid var(--navy);
   border-radius: var(--radius);
   background: var(--surface-blue);
-  box-shadow: 0 3px 0 var(--blue-light);
+  box-shadow: var(--shadow-sticker);
 }
 .weather__icon {
   font-size: 1.6rem;
@@ -241,7 +241,7 @@ button.task__source:hover {
   color: var(--orange);
 }
 .task.is-important {
-  background: linear-gradient(90deg, #fff7e8, transparent 60%);
+  background: linear-gradient(90deg, #fff6ed, transparent 60%);
 }
 .task__due-edit .input {
   max-width: 200px;
@@ -519,7 +519,7 @@ button.task__source:hover {
   border-radius: var(--radius-lg);
   background: var(--surface);
   overflow: hidden;
-  box-shadow: 0 4px 0 var(--blue-light);
+  box-shadow: var(--shadow-sticker);
 }
 .cal__dow {
   padding: 6px;
@@ -555,14 +555,14 @@ button.task__source:hover {
   background: var(--surface-blue);
 }
 .cal__day.is-out {
-  background: repeating-linear-gradient(-45deg, #fafdff 0 6px, #f3f9fc 6px 8px);
+  background: repeating-linear-gradient(-45deg, var(--tint) 0 6px, var(--tint) 6px 8px);
 }
 .cal__day.is-out .cal__num {
   opacity: 0.4;
 }
 .cal__day.is-selected {
   box-shadow: inset 0 0 0 2px var(--navy);
-  background: #f6fbfe;
+  background: var(--tint);
 }
 .cal__num {
   font-family: var(--font-title);
@@ -576,7 +576,7 @@ button.task__source:hover {
   min-width: 26px;
   height: 26px;
   padding: 0 4px;
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--pink);
   color: #fff;
 }
@@ -584,7 +584,7 @@ button.task__source:hover {
   color: var(--pink);
 }
 .cal__day.is-sat .cal__num {
-  color: #2f7fb5;
+  color: #00649b;
 }
 .cal__day.is-today.is-sun .cal__num,
 .cal__day.is-today.is-sat .cal__num {
@@ -607,7 +607,7 @@ button.task__source:hover {
   display: block;
   padding: 1px 5px;
   border-left: 3px solid var(--ev, var(--blue));
-  border-radius: 3px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--ev, var(--blue)) 18%, white);
   font-size: 0.74rem;
   line-height: 1.35;
@@ -634,7 +634,7 @@ button.task__source:hover {
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--blue-light);
   font-size: 0.68rem;
   line-height: 18px;
@@ -817,8 +817,8 @@ button.task__source:hover {
 }
 .memo-sheet-item.is-active {
   border-color: var(--navy);
-  box-shadow: 0 3px 0 var(--navy);
-  background: #fffdf5;
+  box-shadow: var(--shadow-sticker);
+  background: #fff6ed;
 }
 .memo-sheet-item__date {
   font-size: var(--fs-xs);
@@ -841,11 +841,11 @@ button.task__source:hover {
   gap: var(--s4);
   padding: var(--s5) var(--s5) var(--s4) calc(var(--s5) + 18px);
   border: var(--line) solid var(--navy);
-  border-radius: 4px var(--radius-lg) var(--radius-lg) 4px;
+  border-radius: 0;
   background:
     linear-gradient(90deg, transparent 22px, var(--pink-light) 22px, var(--pink-light) 24px, transparent 24px),
-    #fffefa;
-  box-shadow: 0 4px 0 var(--blue-light);
+    #fff6ed;
+  box-shadow: var(--shadow-sticker);
 }
 .memo-sheet--empty {
   min-height: 300px;
@@ -910,7 +910,7 @@ button.task__source:hover {
   padding: 6px 6px 6px 12px;
   border: 1.5px solid var(--pink);
   border-radius: var(--radius);
-  background: #fff5f7;
+  background: var(--tint-pink);
   animation: toast-in 180ms var(--ease-out);
 }
 .selection-bar__text {
@@ -996,7 +996,7 @@ button.task__source:hover {
 }
 .page-item.is-active {
   border-color: var(--navy);
-  box-shadow: 0 3px 0 var(--navy);
+  box-shadow: var(--shadow-sticker);
 }
 .page-item.is-dragging {
   opacity: 0.4;
@@ -1061,7 +1061,7 @@ button.task__source:hover {
 .template-card.is-active {
   border-color: var(--navy);
   background: var(--blue-light);
-  box-shadow: 0 3px 0 var(--navy);
+  box-shadow: var(--shadow-sticker);
 }
 .template-card .muted {
   font-size: 0.72rem;
@@ -1070,7 +1070,7 @@ button.task__source:hover {
   height: 54px;
   margin-bottom: 4px;
   border: 1.5px solid var(--border);
-  border-radius: 6px;
+  border-radius: 0;
   background: #fff;
 }
 .template-card--lined .template-card__thumb {
@@ -1109,7 +1109,7 @@ button.task__source:hover {
   border: var(--line) solid var(--navy);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: 0 4px 0 var(--blue-light);
+  box-shadow: var(--shadow-sticker);
   min-width: 0;
 }
 .page-doc--ink {
@@ -1215,12 +1215,12 @@ button.task__source:hover {
   display: block;
   aspect-ratio: 10 / 7;
   border: var(--line) solid var(--navy);
-  border-radius: 6px 12px 12px 6px;
+  border-radius: 0;
   background: #fff;
   overflow: hidden;
   box-shadow:
     -6px 0 0 -2px var(--blue),
-    0 4px 0 var(--blue-light);
+    var(--shadow-sticker);
   transition: transform var(--t-hover) var(--ease-out);
 }
 .notebook:hover .notebook__cover {
@@ -1307,18 +1307,18 @@ button.archive-row:hover {
   position: relative;
   padding: var(--s3) var(--s3) var(--s4);
   border: var(--line) solid var(--navy);
-  border-radius: 4px;
-  background: #fffbea;
-  box-shadow: 0 4px 0 var(--yellow);
+  border-radius: 0;
+  background: #fff6ed;
+  box-shadow: var(--shadow-sticker);
   white-space: pre-wrap;
 }
 .note-sticky:nth-child(3n + 2) {
-  background: #fff3f5;
-  box-shadow: 0 4px 0 var(--pink-light);
+  background: var(--tint-pink);
+  box-shadow: var(--shadow-sticker);
 }
 .note-sticky:nth-child(3n) {
   background: var(--surface-blue);
-  box-shadow: 0 4px 0 var(--blue-light);
+  box-shadow: var(--shadow-sticker);
 }
 .note-sticky__date {
   display: block;
@@ -1444,12 +1444,12 @@ button.archive-row:hover {
   width: 24px;
   height: 24px;
   border: var(--line) solid var(--navy);
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 0.85rem;
 }
 .grade-chip.is-on {
   background: var(--blue-light);
-  box-shadow: 0 3px 0 var(--navy);
+  box-shadow: var(--shadow-sticker);
 }
 .grade-chip.is-on .grade-chip__box {
   background: var(--navy);
@@ -1886,7 +1886,7 @@ button.archive-row:hover {
   width: 36px;
   height: 36px;
   border: var(--line) solid var(--border);
-  border-radius: 7px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--muted);
   font-family: var(--font-title);
@@ -1974,7 +1974,7 @@ button.archive-row:hover {
   padding: var(--s4);
   border: var(--line) solid var(--navy);
   border-radius: var(--radius-lg);
-  background: #fffefa;
+  background: #fff6ed;
 }
 .daily__count {
   font-size: 0.75rem;
@@ -1986,7 +1986,7 @@ button.archive-row:hover {
   padding: var(--s3);
   border: 1.5px dashed var(--orange);
   border-radius: var(--radius);
-  background: #fffaf0;
+  background: #fff6ed;
 }
 .daily__todos .chip,
 .daily__actions .btn {

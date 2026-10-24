@@ -13,7 +13,7 @@
   font-size: var(--fs-md);
   line-height: 1;
   white-space: nowrap;
-  box-shadow: 0 3px 0 var(--navy);
+  box-shadow: var(--shadow-sticker);
   transition:
     transform var(--t-hover) var(--ease-out),
     box-shadow var(--t-hover) var(--ease-out),
@@ -26,7 +26,7 @@
 }
 .btn:active {
   transform: translateY(2px);
-  box-shadow: 0 1px 0 var(--navy);
+  box-shadow: var(--shadow-sticker);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -36,7 +36,7 @@
 .btn--primary {
   background: var(--navy);
   color: #fff;
-  box-shadow: 0 3px 0 var(--navy-soft);
+  box-shadow: var(--shadow-sticker);
 }
 .btn--primary:hover {
   background: var(--navy-soft);
@@ -47,7 +47,7 @@
   color: #fff;
 }
 .btn--pink:hover {
-  background: #ff4f6d;
+  background: #d13a7f;
 }
 .btn--ghost {
   border-color: transparent;
@@ -179,7 +179,7 @@
   content: '';
   width: 8px;
   height: 8px;
-  border-radius: 2px;
+  border-radius: 0;
   background: var(--chip-color, var(--blue));
 }
 .chip--warn {
@@ -236,7 +236,7 @@
 }
 .input::placeholder,
 .textarea::placeholder {
-  color: #9db3c4;
+  color: #a89c8f;
 }
 
 .check {
@@ -254,7 +254,7 @@
   width: 26px;
   height: 26px;
   border: var(--line) solid var(--navy);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   appearance: none;
   -webkit-appearance: none;
@@ -302,7 +302,7 @@
   min-height: 36px;
   padding: 0 12px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   background: transparent;
   white-space: nowrap;
   font-size: var(--fs-sm);
@@ -317,18 +317,18 @@
   position: relative;
   height: 14px;
   border: var(--line) solid var(--navy);
-  border-radius: 4px;
+  border-radius: 0;
   background: repeating-linear-gradient(90deg, var(--surface) 0 10px, var(--surface-blue) 10px 12px);
   overflow: hidden;
 }
 .bar__fill {
   height: 100%;
-  background: repeating-linear-gradient(90deg, var(--blue) 0 10px, #6aa6cd 10px 12px);
+  background: repeating-linear-gradient(90deg, var(--blue) 0 10px, #4fa9ef 10px 12px);
   transform-origin: left center;
   transition: transform 400ms var(--ease-out);
 }
 .bar--behind .bar__fill {
-  background: repeating-linear-gradient(90deg, var(--pink) 0 10px, #f2506d 10px 12px);
+  background: repeating-linear-gradient(90deg, var(--pink) 0 10px, #cc3a7c 10px 12px);
 }
 
 /* ---------- 오버레이: drawer / sheet / modal ---------- */
@@ -336,7 +336,7 @@
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: rgba(21, 42, 75, 0.28);
+  background: rgba(45, 36, 27, 0.28);
   animation: fade-in var(--t-panel) var(--ease-out);
 }
 @keyframes fade-in {
@@ -388,7 +388,7 @@
     height: min(92dvh, 100%);
     border-left: 0;
     border-top: var(--line) solid var(--navy);
-    border-radius: 18px 18px 0 0;
+    border-radius: 0;
     animation-name: sheet-in;
   }
   .drawer::before {
@@ -397,7 +397,7 @@
     width: 44px;
     height: 5px;
     margin-top: 8px;
-    border-radius: 3px;
+    border-radius: 0;
     background: var(--border);
   }
 }
@@ -572,7 +572,7 @@
   padding: 0 5px;
   border: 1.5px solid var(--border);
   border-bottom-width: 3px;
-  border-radius: 5px;
+  border-radius: 0;
   font-size: var(--fs-xs);
   text-align: center;
   background: var(--surface);

@@ -48,7 +48,7 @@
   width: 34px;
   height: 34px;
   border: var(--line) solid var(--navy);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--navy);
 }
 .sidebar__brand-text {
@@ -91,12 +91,12 @@
   background: var(--surface-blue);
 }
 .nav-link.is-active {
-  background: var(--surface);
+  background: var(--green);
   border-color: var(--navy);
-  box-shadow: 0 3px 0 var(--blue-light);
+  box-shadow: var(--shadow-sticker);
 }
 .nav-link.is-active svg {
-  color: var(--pink);
+  color: var(--navy);
 }
 .nav-link__label {
   font-family: var(--font-title);
@@ -185,7 +185,7 @@
 }
 .sync-pill--offline {
   border-color: var(--orange);
-  background: #fff6e6;
+  background: #fff6ed;
 }
 .sync-pill--error {
   border-color: var(--pink);
@@ -195,7 +195,7 @@
 .sync-pill__count {
   min-width: 18px;
   padding: 0 4px;
-  border-radius: 9px;
+  border-radius: 0;
   background: var(--orange);
   color: var(--navy);
   text-align: center;

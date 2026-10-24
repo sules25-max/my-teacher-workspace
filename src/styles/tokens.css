@@ -14,28 +14,33 @@
 }
 
 :root {
+  /* Astryx y2k 테마 팔레트(@astryxdesign/theme-y2k 0.7.4)에 맞춘 값. 글꼴은 기존 한글 폰트 유지 */
   /* paper */
-  --paper: #f2fbff;
-  --paper-grid: #dceef5;
+  --paper: #cccffa;
+  --paper-grid: #c1c5f3;
   --surface: #ffffff;
-  --surface-blue: #edf8fc;
+  --surface-blue: #fff6ed;
 
   /* ink */
-  --navy: #152a4b;
-  --navy-soft: #29486f;
-  --muted: #7891a6;
-  --border: #a9cfe2;
+  --navy: #2d241b;
+  --navy-soft: #4f453b;
+  --muted: #675d52;
+  --border: #d1c5b8;
 
   /* accents */
-  --blue: #82b7d9;
-  --blue-light: #c9e5f2;
-  --pink: #ff6680;
-  --pink-light: #ffd7de;
-  --orange: #ffad32;
-  --yellow: #ffd464;
-  --coral: #f2765a;
-  --violet: #8a8fe0;
-  --ok: #3f9b78;
+  --blue: #70c1ff;
+  --blue-light: #addbff;
+  --pink: #e5488f;
+  --pink-light: #ffbfd9;
+  --orange: #ff9f5a;
+  --yellow: #ffe08a;
+  --coral: #ff7a7f;
+  --violet: #a08cff;
+  --ok: #6f8f1f;
+  --green: #c5e17a;
+  --green-ink: #3f4e00;
+  --tint: #f4f5fe;
+  --tint-pink: #ffeef6;
 
   /* type */
   --font-body: 'AyoungSYearning2019Handwriting', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
@@ -48,13 +53,13 @@
   --fs-2xl: 2.4rem;
 
   /* shape */
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --line: 2px;
-  --shadow-sticker: 0 3px 0 var(--blue-light);
-  --shadow-pop: 0 4px 0 var(--navy);
-  --shadow-float: 0 10px 30px rgba(21, 42, 75, 0.16);
+  --radius-sm: 0px;
+  --radius: 0px;
+  --radius-lg: 0px;
+  --line: 1px;
+  --shadow-sticker: 0 2px 4px #2d241b0d, 0 4px 8px #2d241b1a; /* y2k shadow-low */
+  --shadow-pop: 0 2px 4px #2d241b0d, 0 4px 12px #2d241b1a; /* y2k shadow-med */
+  --shadow-float: 0 4px 6px #2d241b1a, 0 12px 24px #2d241b26; /* y2k shadow-high */
 
   /* spacing */
   --s1: 4px;
@@ -86,7 +91,7 @@
   --cat-work: var(--pink);
   --cat-training: var(--violet);
   --cat-deadline: var(--coral);
-  --cat-personal: #9aa9b5;
+  --cat-personal: #b8ab9d;
 }
 
 @media (prefers-reduced-motion: reduce) {

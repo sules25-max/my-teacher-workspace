@@ -7,7 +7,7 @@
 }
 .avatar--framed {
   border: var(--line) solid var(--navy);
-  border-radius: 12px;
+  border-radius: 0;
   background-color: var(--surface-blue);
 }
 
@@ -82,11 +82,11 @@
   padding: 0;
   border: 0;
   background: none;
-  border-radius: 14px;
+  border-radius: 0;
   touch-action: none;
   cursor: grab;
   transition: transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
-  filter: drop-shadow(0 4px 0 var(--navy));
+  filter: drop-shadow(0 4px 6px #2d241b33);
 }
 .ai-float__btn:hover {
   transform: translateY(-3px);
@@ -104,7 +104,7 @@
   width: 14px;
   height: 14px;
   border: var(--line) solid var(--navy);
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--ok);
 }
 @media (max-width: 767px) {
@@ -153,7 +153,7 @@
     position: fixed;
     inset: 0;
     z-index: 49;
-    background: rgba(21, 42, 75, 0.25);
+    background: rgba(45, 36, 27, 0.25);
   }
   .ai-panel {
     left: 0;
@@ -161,7 +161,7 @@
     bottom: 0;
     width: 100vw;
     height: min(82dvh, 640px);
-    border-radius: 18px 18px 0 0;
+    border-radius: 0;
     border-bottom: 0;
     padding-bottom: var(--safe-bottom);
     animation-name: sheet-in;
@@ -216,14 +216,14 @@
 .ai-msg__text {
   padding: 8px 12px;
   border: var(--line) solid var(--navy);
-  border-radius: 4px 12px 12px 12px;
+  border-radius: 0;
   background: #fff;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: var(--fs-md);
 }
 .ai-msg--user .ai-msg__text {
-  border-radius: 12px 4px 12px 12px;
+  border-radius: 0;
   background: var(--navy);
   color: #fff;
   max-width: 85%;
@@ -267,11 +267,11 @@
   padding: 10px 12px;
   border: var(--line) dashed var(--orange);
   border-radius: var(--radius);
-  background: #fffaf0;
+  background: #fff6ed;
 }
 .ai-confirm--danger {
   border-color: var(--pink);
-  background: #fff5f7;
+  background: var(--tint-pink);
 }
 .ai-confirm.is-settled {
   opacity: 0.7;
@@ -360,8 +360,8 @@
 /* 떠 있는 버튼이 이제 작은 방(장면)이라 그림자 대신 테두리 강조 */
 .ai-float__btn {
   filter: none;
-  border-radius: 12px;
-  box-shadow: 0 4px 0 var(--navy);
+  border-radius: 0;
+  box-shadow: var(--shadow-sticker);
 }
 
 /* 답변 근거 · 분석 개수 표시 */
@@ -374,8 +374,8 @@
 }
 .ai-debug {
   border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: #fbfdff;
+  border-radius: 0;
+  background: var(--tint);
   font-size: 0.74rem;
 }
 .ai-debug summary {
@@ -412,7 +412,7 @@
   width: 56px;
   height: 56px;
   border: var(--line) solid var(--navy);
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--surface-blue);
 }
@@ -449,7 +449,7 @@
   height: 64px;
   object-fit: cover;
   border: 1.5px solid var(--navy);
-  border-radius: 8px;
+  border-radius: 0;
 }
 .vision-actions {
   display: grid;
