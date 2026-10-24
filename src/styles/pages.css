@@ -13,9 +13,7 @@
   align-items: center;
   gap: var(--s4);
   padding: var(--s5) var(--s5) var(--s4);
-  background:
-    linear-gradient(var(--paper-grid) 1px, transparent 1px) 0 0 / 100% 18px,
-    var(--surface);
+  background: var(--surface);
   overflow: hidden;
 }
 .hero__text {
@@ -23,7 +21,7 @@
   min-width: 0;
 }
 .hero__greet {
-  color: var(--pink);
+  color: var(--tx-pink);
   font-size: var(--fs-md);
   letter-spacing: 0.12em;
 }
@@ -46,10 +44,10 @@
   gap: 0;
   min-width: 86px;
   padding: 10px 12px;
-  border: var(--line) solid var(--navy);
+  border: 1px solid var(--tx-blue);
   border-radius: var(--radius);
-  background: var(--surface-blue);
-  box-shadow: var(--shadow-sticker);
+  background: var(--bg-blue);
+  color: var(--tx-blue);
 }
 .weather__icon {
   font-size: 1.6rem;
@@ -117,7 +115,7 @@
   align-items: center;
   gap: var(--s2);
   padding: 4px 4px 4px 0;
-  border-bottom: 1.5px dashed var(--paper-grid);
+  border-bottom: 1px solid var(--paper-grid);
 }
 .lesson-row:last-child {
   border-bottom: 0;
@@ -188,7 +186,7 @@
   gap: 4px;
   min-height: 52px;
   padding: 2px 4px 2px 10px;
-  border-bottom: 1.5px dashed var(--paper-grid);
+  border-bottom: 1px solid var(--paper-grid);
 }
 .task:last-child {
   border-bottom: 0;
@@ -238,10 +236,10 @@ button.task__source:hover {
   color: var(--border);
 }
 .task__star.is-on {
-  color: var(--orange);
+  color: var(--tx-yellow);
 }
 .task.is-important {
-  background: linear-gradient(90deg, #fff6ed, transparent 60%);
+  background: var(--bg-yellow);
 }
 .task__due-edit .input {
   max-width: 200px;
@@ -397,7 +395,7 @@ button.task__source:hover {
 .matrix td {
   padding: 4px;
   text-align: center;
-  border-bottom: 1.5px dashed var(--paper-grid);
+  border-bottom: 1px solid var(--paper-grid);
 }
 .matrix thead th {
   font-weight: normal;
@@ -469,7 +467,7 @@ button.task__source:hover {
 .progress-upto {
   margin-top: var(--s4);
   padding-top: var(--s3);
-  border-top: 1.5px dashed var(--border);
+  border-top: 1px solid var(--border);
   gap: var(--s2);
 }
 .progress-upto__select {
@@ -734,7 +732,7 @@ button.task__source:hover {
 }
 .day-event__edit {
   padding: var(--s3);
-  border-top: 1.5px dashed var(--border);
+  border-top: 1px solid var(--border);
 }
 .day-lessons {
   display: flex;
@@ -859,7 +857,7 @@ button.task__source:hover {
 .memo-sheet .textarea--lined {
   background-color: transparent;
   border-color: transparent;
-  border-bottom: 1.5px dashed var(--paper-grid);
+  border-bottom: 1px solid var(--paper-grid);
   border-radius: 0;
   padding-inline: 4px;
 }
@@ -899,7 +897,7 @@ button.task__source:hover {
 }
 .memo-sheet__foot {
   justify-content: flex-end;
-  border-top: 1.5px dashed var(--border);
+  border-top: 1px solid var(--border);
   padding-top: var(--s2);
 }
 .selection-bar {
@@ -1144,7 +1142,7 @@ button.task__source:hover {
 .page-doc__add {
   gap: 6px;
   padding-top: var(--s3);
-  border-top: 1.5px dashed var(--border);
+  border-top: 1px solid var(--border);
 }
 .block {
   position: relative;
@@ -1278,7 +1276,7 @@ button.task__source:hover {
   min-height: var(--tap);
   padding: 6px 8px;
   border: 0;
-  border-bottom: 1.5px dashed var(--paper-grid);
+  border-bottom: 1px solid var(--paper-grid);
   background: transparent;
   text-align: left;
 }
@@ -1611,7 +1609,7 @@ button.archive-row:hover {
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-  border-bottom: var(--line) dashed var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .palette__input {
   flex: 1;
@@ -1781,7 +1779,7 @@ button.archive-row:hover {
 }
 .wizard__nav {
   padding-top: var(--s2);
-  border-top: 1.5px dashed var(--border);
+  border-top: 1px solid var(--border);
 }
 @media (max-width: 480px) {
   .wizard__card {

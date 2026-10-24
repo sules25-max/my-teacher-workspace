@@ -172,7 +172,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 8px 10px 12px;
-  border-bottom: var(--line) dashed var(--border);
+  border-bottom: 1px solid var(--border);
   background: #fff;
 }
 .ai-panel__title {
@@ -296,7 +296,7 @@
   gap: 6px;
   padding: 8px var(--s3);
   overflow-x: auto;
-  border-top: var(--line) dashed var(--border);
+  border-top: 1px solid var(--border);
   scrollbar-width: none;
 }
 .ai-quick__btn {

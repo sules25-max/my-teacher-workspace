@@ -7,28 +7,17 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sticker);
 }
-/* 바인더 구멍 */
-.planner-paper::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -9px;
-  width: 120px;
-  height: 16px;
-  transform: translateX(-50%);
-  background: radial-gradient(circle at 12px 8px, var(--paper) 5px, var(--navy) 5.5px, var(--navy) 7px, transparent 7.5px) 0 0 / 40px 16px repeat-x;
-}
 .planner {
   display: grid;
-  border-top: 1.5px solid var(--border);
-  border-left: 1.5px solid var(--border);
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 .planner > * {
-  border-right: 1.5px solid var(--border);
-  border-bottom: 1.5px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 .planner__corner {
-  background: var(--surface-blue);
+  background: var(--bg-gray);
 }
 .planner__day {
   display: flex;
@@ -36,7 +25,7 @@
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px 10px;
-  background: var(--surface-blue);
+  background: var(--bg-gray);
 }
 .planner__wd {
   font-size: var(--fs-lg);
@@ -46,18 +35,18 @@
 }
 .planner__day.is-today {
   background: var(--navy);
-  color: #fff;
+  color: var(--paper);
 }
 .planner__day.is-today .planner__date {
-  color: var(--yellow);
+  color: var(--bg-green);
 }
 .planner__day.is-holiday .planner__wd,
 .planner__day.is-holiday .planner__date {
-  color: var(--pink);
+  color: var(--tx-pink);
 }
 .planner__hol {
   font-size: var(--fs-xs);
-  color: var(--pink);
+  color: var(--tx-pink);
   width: 100%;
 }
 .planner__period {
@@ -65,7 +54,7 @@
   align-content: center;
   gap: 1px;
   padding: 6px 8px;
-  background: repeating-linear-gradient(-45deg, var(--surface) 0 6px, var(--surface-blue) 6px 8px);
+  background: var(--surface);
   font-size: var(--fs-md);
 }
 .planner__grades,
@@ -87,41 +76,39 @@
   position: relative;
   height: 100%;
   min-height: 80px;
-  border: var(--line) solid var(--navy);
+  border: 1px solid var(--navy);
   border-radius: var(--radius);
-  background: var(--surface-blue);
-  transition:
-    transform var(--t-hover) var(--ease-out),
-    box-shadow var(--t-hover);
+  background: var(--bg-blue);
+  transition: box-shadow var(--t-hover);
 }
-.lesson-cell[data-grade='3'] {
-  background: var(--tint);
-}
-.lesson-cell[data-grade='4'] {
-  background: #fff6ed;
-}
-.lesson-cell[data-grade='5'] {
-  background: var(--tint);
-}
-.lesson-cell[data-grade='6'] {
-  background: #f3f9df;
-}
+/* 학년별 Astryx 카테고리 색 */
 .lesson-cell[data-grade='1'],
 .lesson-cell[data-grade='2'] {
-  background: var(--tint-pink);
+  background: var(--bg-pink);
+}
+.lesson-cell[data-grade='3'] {
+  background: var(--bg-blue);
+}
+.lesson-cell[data-grade='4'] {
+  background: var(--bg-yellow);
+}
+.lesson-cell[data-grade='5'] {
+  background: var(--bg-purple);
+}
+.lesson-cell[data-grade='6'] {
+  background: var(--bg-green);
 }
 .lesson-cell:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sticker);
+  box-shadow: var(--shadow-low);
 }
 .lesson-cell.is-unplanned {
   border-style: dashed;
-  border-color: var(--blue);
+  border-color: var(--muted);
   background: var(--surface);
 }
 .lesson-cell.is-done {
   background: var(--surface);
-  border-color: var(--blue);
+  border-color: var(--border);
 }
 .lesson-cell.is-done .lesson-cell__lesson,
 .lesson-cell.is-done .lesson-cell__class {
@@ -407,7 +394,7 @@
   display: flex;
   justify-content: center;
   padding-top: var(--s2);
-  border-top: var(--line) dashed var(--border);
+  border-top: 1px solid var(--border);
   color: var(--muted);
 }
 
@@ -420,7 +407,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  border-bottom: 1px dashed var(--paper-grid);
+  border-bottom: 1px solid var(--paper-grid);
 }
 .checklist__item .check {
   flex: 1;
@@ -731,7 +718,7 @@
 .move-to {
   gap: 6px;
   padding-top: 6px;
-  border-top: 1.5px dashed var(--border);
+  border-top: 1px solid var(--border);
 }
 .move-to__sel {
   width: auto;

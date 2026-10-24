@@ -17,7 +17,7 @@
   /* Astryx y2k 테마 팔레트(@astryxdesign/theme-y2k 0.7.4)에 맞춘 값. 글꼴은 기존 한글 폰트 유지 */
   /* paper */
   --paper: #cccffa;
-  --paper-grid: #c1c5f3;
+  --paper-grid: #ebe2d8;
   --surface: #ffffff;
   --surface-blue: #fff6ed;
 
@@ -42,6 +42,31 @@
   --tint: #f4f5fe;
   --tint-pink: #ffeef6;
 
+  /* Astryx y2k 의미 색 (배경 / 글자 쌍) */
+  --neutral: #2d241b10;
+  --hover: #2d241b0d;
+  --pressed: #2d241b1a;
+  --overlay: #2d241b80;
+  --bg-gray: #f1e6db;
+  --bg-blue: #addbff;
+  --bg-green: #c5e17a;
+  --bg-yellow: #ffe08a;
+  --bg-red: #ffc3c3;
+  --bg-pink: #ffbfd9;
+  --bg-purple: #d5cdff;
+  --bg-orange: #ffc89d;
+  --bg-teal: #b6f2d7;
+  --bd-green: #b5d360;
+  --bd-red: #ff969a;
+  --tx-gray: #4f453b;
+  --tx-blue: #003454;
+  --tx-green: #3f4e00;
+  --tx-yellow: #584400;
+  --tx-red: #880023;
+  --tx-pink: #82004f;
+  --tx-purple: #431a88;
+  --tx-orange: #703400;
+
   /* type */
   --font-body: 'AyoungSYearning2019Handwriting', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   --font-title: 'GeekbleMalrangiche', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
@@ -57,7 +82,8 @@
   --radius: 0px;
   --radius-lg: 0px;
   --line: 1px;
-  --shadow-sticker: 0 2px 4px #2d241b0d, 0 4px 8px #2d241b1a; /* y2k shadow-low */
+  --shadow-low: 0 2px 4px #2d241b0d, 0 4px 8px #2d241b1a; /* y2k shadow-low */
+  --shadow-sticker: 0 0 #0000; /* Astryx 카드는 평평하게(그림자 없음) */
   --shadow-pop: 0 2px 4px #2d241b0d, 0 4px 12px #2d241b1a; /* y2k shadow-med */
   --shadow-float: 0 4px 6px #2d241b1a, 0 12px 24px #2d241b26; /* y2k shadow-high */
 

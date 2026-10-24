@@ -127,7 +127,7 @@
   align-items: center;
   gap: 2px;
   padding-right: 6px;
-  border-right: 1.5px dashed var(--border);
+  border-right: 1px solid var(--border);
 }
 .ink-toolbar__group:last-child {
   border-right: 0;

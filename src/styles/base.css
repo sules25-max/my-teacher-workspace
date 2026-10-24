@@ -19,12 +19,6 @@ body {
   font-size: 17px;
   line-height: 1.5;
   background-color: var(--paper);
-  /* 옅은 모눈 종이 */
-  background-image:
-    linear-gradient(var(--paper-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-position: -1px -1px;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
@@ -76,7 +70,7 @@ img {
 }
 
 ::selection {
-  background: var(--yellow);
+  background: var(--bg-green);
 }
 
 .sr-only {
