@@ -46,11 +46,14 @@ export async function buildContext(route: Route): Promise<AIContext | null> {
         text: clip(`[${m.kind}] ${m.title} ${m.date}\n전달사항: ${m.announcements}\n결정사항: ${m.decisions}\n해야 할 일: ${m.todos}\n메모: ${m.memo}`, 2500),
       };
     }
-    case 'pages': {
+    case 'pages':
+    case 'board': {
       const id = route.params[0];
       const p = id ? await db.pages.get(id) : undefined;
       if (!p) return null;
-      return { label: `페이지 1개 (${p.title})`, text: clip(`${p.title}\n${pagePlainText(p)}`, 2500) };
+      const typed: string[] = [];
+      for (const b of p.blocks) if (b.type === 'ink') (await db.inkDocs.get(b.docId))?.texts?.forEach((t) => t.text.trim() && typed.push(t.text.trim()));
+      return { label: `자유보드 1개 (${p.title})`, text: clip(`${p.title}\n${[pagePlainText(p), ...typed].filter(Boolean).join('\n')}`, 2500) };
     }
     case 'tasks': {
       const tasks = (await db.tasks.toArray()).filter((t) => !t.completed);

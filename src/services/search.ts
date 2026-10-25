@@ -51,10 +51,17 @@ export async function searchAll(query: string, limit = 40): Promise<SearchResult
     const sc = score(`${m.title} ${m.kind} ${body}`, terms);
     if (sc) out.push({ kind: 'meeting', id: m.id, title: m.title || m.kind, snippet: snippet(body, first), date: m.date, href: `work/${m.id}`, score: sc });
   });
+  // 보드 글상자(키보드로 입력한 글)도 찾을 수 있게
+  const typed = new Map<string, string>();
+  await db.inkDocs.each((d) => {
+    const t = (d.texts ?? []).map((x) => x.text).join('\n').trim();
+    if (t) typed.set(d.id, t);
+  });
   await db.pages.each((p) => {
-    const body = pagePlainText(p);
+    const inkText = p.blocks.map((b) => (b.type === 'ink' ? typed.get(b.docId) ?? '' : '')).filter(Boolean).join('\n');
+    const body = [pagePlainText(p), inkText].filter(Boolean).join('\n');
     const sc = score(`${p.title} ${body}`, terms);
-    if (sc) out.push({ kind: 'page', id: p.id, title: p.title, snippet: snippet(body, first), date: p.updatedAt.slice(0, 10), href: p.template === 'board' ? `board/${p.id}` : `pages/${p.id}`, score: sc + 0.5 });
+    if (sc) out.push({ kind: 'page', id: p.id, title: p.title, snippet: snippet(body, first), date: p.updatedAt.slice(0, 10), href: `board/${p.id}`, score: sc + 0.5 });
   });
   await db.tasks.each((t) => {
     const sc = score(`${t.title} ${t.sourceLabel ?? ''}`, terms);

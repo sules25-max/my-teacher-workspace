@@ -5,6 +5,7 @@ import type { PageBlock, PageGroup, PageTemplate, WorkspacePage } from '../types
 import { uuid } from '../utils/id';
 
 export const TEMPLATES: { id: PageTemplate; label: string; desc: string }[] = [
+  { id: 'board', label: '넓은 보드', desc: '손글씨 · 글상자 캔버스' },
   { id: 'blank', label: '빈 페이지', desc: '자유롭게 필기' },
   { id: 'lined', label: '줄노트', desc: '줄 있는 필기' },
   { id: 'grid', label: '모눈노트', desc: '모눈 필기' },
@@ -14,7 +15,6 @@ export const TEMPLATES: { id: PageTemplate; label: string; desc: string }[] = [
   { id: 'monthly', label: '월간계획', desc: '목표 · 일정' },
   { id: 'checklist', label: '체크리스트', desc: '항목 체크' },
   { id: 'lesson', label: '수업노트', desc: '목표 · 활동 · 반성' },
-  { id: 'board', label: '자유보드', desc: '넓은 캔버스' },
 ];
 
 export const INK_ONLY: PageTemplate[] = ['blank', 'lined', 'grid', 'dot', 'board'];

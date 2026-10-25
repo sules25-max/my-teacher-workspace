@@ -1,4 +1,4 @@
-import type { InkPoint, Stroke } from '../../types';
+import type { InkPoint, InkText, Stroke } from '../../types';
 
 // 손글씨 렌더링 · 판정 함수. 좌표는 모두 문서 좌표(InkDoc.width 기준)다.
 
@@ -102,7 +102,37 @@ export function shouldAddPoint(last: InkPoint | undefined, x: number, y: number)
   return !last || Math.hypot(last.x - x, last.y - y) >= 0.8;
 }
 
-export function renderPreview(strokes: Stroke[], width: number, height: number, max = 360): string {
+export const TEXT_SIZES = [22, 30, 44];
+export const TEXT_FONT = "'AyoungSYearning2019Handwriting', 'Apple SD Gothic Neo', sans-serif";
+export const TEXT_LINE = 1.4;
+
+/** 글상자를 캔버스에 그린다(미리보기용). 화면에서는 textarea로 보여준다 */
+export function drawTexts(ctx: CanvasRenderingContext2D, texts: InkText[]) {
+  for (const t of texts) {
+    if (!t.text.trim()) continue;
+    ctx.save();
+    ctx.fillStyle = t.color;
+    ctx.font = `${t.size}px ${TEXT_FONT}`;
+    ctx.textBaseline = 'top';
+    let y = t.y + 4;
+    for (const para of t.text.split('\n')) {
+      let line = '';
+      for (const ch of para) {
+        if (line && ctx.measureText(line + ch).width > t.w - 8) {
+          ctx.fillText(line, t.x + 4, y);
+          y += t.size * TEXT_LINE;
+          line = '';
+        }
+        line += ch;
+      }
+      ctx.fillText(line, t.x + 4, y);
+      y += t.size * TEXT_LINE;
+    }
+    ctx.restore();
+  }
+}
+
+export function renderPreview(strokes: Stroke[], width: number, height: number, max = 360, texts: InkText[] = []): string {
   const scale = max / Math.max(width, height);
   const c = document.createElement('canvas');
   c.width = Math.round(width * scale);
@@ -112,5 +142,6 @@ export function renderPreview(strokes: Stroke[], width: number, height: number, 
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.scale(scale, scale);
   strokes.forEach((s) => drawStroke(ctx, s));
+  drawTexts(ctx, texts);
   return c.toDataURL('image/png');
 }

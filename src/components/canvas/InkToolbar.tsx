@@ -1,9 +1,9 @@
 import { useRef } from 'react';
-import { Eraser, Highlighter, ImagePlus, Camera, MousePointer2, Pen, Redo2, Trash2, Undo2, Hand, ChevronsDown, Eraser as ClearIcon } from 'lucide-react';
-import { HIGHLIGHT_COLORS, INK_COLORS, PEN_WIDTHS } from './inkRender';
+import { Eraser, Highlighter, ImagePlus, Camera, MousePointer2, Pen, Redo2, Trash2, Undo2, Hand, ChevronsDown, Type, Eraser as ClearIcon } from 'lucide-react';
+import { HIGHLIGHT_COLORS, INK_COLORS, PEN_WIDTHS, TEXT_SIZES } from './inkRender';
 import { cx } from '../../utils/id';
 
-export type InkTool = 'pen' | 'highlighter' | 'eraser' | 'select';
+export type InkTool = 'pen' | 'highlighter' | 'text' | 'eraser' | 'select';
 
 interface Props {
   tool: InkTool;
@@ -14,6 +14,8 @@ interface Props {
   setHlColor: (c: string) => void;
   penWidth: number;
   setPenWidth: (w: number) => void;
+  textSize: number;
+  setTextSize: (n: number) => void;
   canUndo: boolean;
   canRedo: boolean;
   undo: () => void;
@@ -31,6 +33,7 @@ interface Props {
 const TOOLS: { id: InkTool; label: string; Icon: typeof Pen }[] = [
   { id: 'pen', label: '펜', Icon: Pen },
   { id: 'highlighter', label: '형광펜', Icon: Highlighter },
+  { id: 'text', label: '글상자 (키보드로 입력)', Icon: Type },
   { id: 'eraser', label: '지우개', Icon: Eraser },
   { id: 'select', label: '선택', Icon: MousePointer2 },
 ];
@@ -50,7 +53,7 @@ export function InkToolbar(p: Props) {
           </button>
         ))}
       </div>
-      {(p.tool === 'pen' || p.tool === 'highlighter') && (
+      {(p.tool === 'pen' || p.tool === 'highlighter' || p.tool === 'text') && (
         <div className="ink-toolbar__group">
           {colors.map((c) => (
             <button
@@ -66,6 +69,12 @@ export function InkToolbar(p: Props) {
             PEN_WIDTHS.map((w) => (
               <button key={w} className={cx('width-dot', p.penWidth === w && 'is-active')} onClick={() => p.setPenWidth(w)} aria-label={`굵기 ${w}`} aria-pressed={p.penWidth === w}>
                 <span style={{ width: w * 2.2, height: w * 2.2 }} />
+              </button>
+            ))}
+          {p.tool === 'text' &&
+            TEXT_SIZES.map((n, i) => (
+              <button key={n} className={cx('width-dot text-size', p.textSize === n && 'is-active')} onClick={() => p.setTextSize(n)} aria-label={`글자 크기 ${['작게', '보통', '크게'][i]}`} aria-pressed={p.textSize === n}>
+                <span style={{ fontSize: 12 + i * 5 }}>가</span>
               </button>
             ))}
         </div>

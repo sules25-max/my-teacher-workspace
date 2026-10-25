@@ -11,7 +11,7 @@ import { navigate } from '../../hooks/useRoute';
 export function TaskItem({ task, editable = false }: { task: Task; editable?: boolean }) {
   const [editingDue, setEditingDue] = useState(false);
   const overdue = !task.completed && task.dueDate && task.dueDate < todayISO();
-  const sourceHref = task.sourceType === 'meeting' && task.sourceId ? `work/${task.sourceId}` : task.sourceType === 'page' && task.sourceId ? `pages/${task.sourceId}` : null;
+  const sourceHref = task.sourceType === 'meeting' && task.sourceId ? `work/${task.sourceId}` : task.sourceType === 'page' && task.sourceId ? `board/${task.sourceId}` : null;
   return (
     <li className={cx('task', task.completed && 'is-done', task.important && 'is-important')}>
       <label className="task__check">

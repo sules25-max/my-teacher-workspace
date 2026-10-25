@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { Move, Trash2 } from 'lucide-react';
 import { db } from '../../services/localDb';
 import * as repo from '../../services/repo';
 import { addFiles, useAttachments, useBlobUrl } from '../../services/attachments';
-import type { Attachment, InkDoc, InkImage, InkPoint, Stroke } from '../../types';
+import type { Attachment, InkDoc, InkImage, InkPoint, InkText, Stroke } from '../../types';
 import { uuid, cx } from '../../utils/id';
-import { drawStroke, renderPreview, shouldAddPoint, strokeHit, strokeInRect, strokeBounds, INK_COLORS, HIGHLIGHT_COLORS, PEN_WIDTHS } from './inkRender';
+import { drawStroke, renderPreview, shouldAddPoint, strokeHit, strokeInRect, strokeBounds, INK_COLORS, HIGHLIGHT_COLORS, PEN_WIDTHS, TEXT_SIZES, TEXT_LINE } from './inkRender';
 import { InkToolbar, type InkTool } from './InkToolbar';
 import { toast } from '../common/overlays';
 import { onFlushRequest } from '../../services/flush';
@@ -19,6 +21,7 @@ interface Props {
 interface Snapshot {
   strokes: Stroke[];
   images: InkImage[];
+  texts: InkText[];
 }
 
 type Drag =
@@ -27,13 +30,15 @@ type Drag =
   | { kind: 'marquee'; pointerId: number; x0: number; y0: number; x1: number; y1: number }
   | { kind: 'move'; pointerId: number; x0: number; y0: number; dx: number; dy: number }
   | { kind: 'image-move'; pointerId: number; id: string; x0: number; y0: number; orig: InkImage }
-  | { kind: 'image-resize'; pointerId: number; id: string; x0: number; y0: number; orig: InkImage };
+  | { kind: 'image-resize'; pointerId: number; id: string; x0: number; y0: number; orig: InkImage }
+  | { kind: 'text-tap'; pointerId: number; cx: number; cy: number; editing: boolean }
+  | { kind: 'text-move' | 'text-resize'; pointerId: number; id: string; x0: number; y0: number; orig: InkText };
 
 const BG_CLASS: Record<string, string> = { plain: '', lined: 'ink-bg--lined', grid: 'ink-bg--grid', dot: 'ink-bg--dot' };
 
 export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
   const [doc, setDoc] = useState<InkDoc | null>(null);
-  const [snap, setSnap] = useState<Snapshot>({ strokes: [], images: [] });
+  const [snap, setSnap] = useState<Snapshot>({ strokes: [], images: [], texts: [] });
   const history = useRef<{ past: Snapshot[]; future: Snapshot[] }>({ past: [], future: [] });
   const [, forceHistory] = useState(0);
 
@@ -42,12 +47,17 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
   const [hlColor, setHlColor] = useState(HIGHLIGHT_COLORS[0]);
   const [penWidth, setPenWidth] = useState(PEN_WIDTHS[1]);
   const [pencilOnly, setPencilOnly] = useState(false);
+  const [textSize, setTextSize] = useState(TEXT_SIZES[1]);
+  const [activeText, setActiveText] = useState<string | null>(null);
+  // 글상자 편집을 시작할 때의 상태. 편집이 끝나면(blur) 한 번만 실행취소 기록에 넣는다
+  const editStart = useRef<Snapshot | null>(null);
   const penSeen = useRef(false);
 
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [scale, setScale] = useState(1);
@@ -61,7 +71,7 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
     db.inkDocs.get(docId).then((d) => {
       if (!alive || !d) return;
       setDoc(d);
-      setSnap({ strokes: d.strokes ?? [], images: d.images ?? [] });
+      setSnap({ strokes: d.strokes ?? [], images: d.images ?? [], texts: (d.texts ?? []).filter((t) => t.text.trim()) });
       history.current = { past: [], future: [] };
     });
     return () => {
@@ -79,7 +89,8 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
     if (!d || !dirty.current) return;
     dirty.current = false;
     const s = snapRef.current;
-    const next: InkDoc = { ...d, strokes: s.strokes, images: s.images, preview: renderPreview(s.strokes, d.width, d.height) };
+    const texts = s.texts.filter((t) => t.text.trim()); // 아직 비어 있는 새 글상자는 저장하지 않음
+    const next: InkDoc = { ...d, strokes: s.strokes, images: s.images, texts, preview: renderPreview(s.strokes, d.width, d.height, 360, texts) };
     await repo.put('inkDocs', next);
   }, []);
   const scheduleSave = useCallback(() => {
@@ -197,6 +208,13 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
       penSeen.current = true;
       setPencilOnly(true); // Apple Pencil이 감지되면 손가락 입력은 스크롤용으로 돌린다(손바닥 오입력 방지)
     }
+    if (tool === 'text') {
+      // 탭한 자리에 글상자를 만든다. 손가락으로 끌면 스크롤이므로 손을 뗄 때 판단한다
+      if (drag.current || (e.button !== 0 && e.pointerType === 'mouse')) return;
+      // 마우스는 누르는 순간 글상자 focus가 빠지므로, 편집 중이었는지는 누를 때 기억해 둔다
+      drag.current = { kind: 'text-tap', pointerId: e.pointerId, cx: e.clientX, cy: e.clientY, editing: !!activeText };
+      return;
+    }
     if (rejectTouch(e) || drag.current) return;
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     e.preventDefault();
@@ -288,6 +306,18 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
     drag.current = null;
+    if (d.kind === 'text-tap') {
+      if (e.type === 'pointercancel' || Math.hypot(e.clientX - d.cx, e.clientY - d.cy) > 10) return;
+      if (d.editing || activeText) {
+        // 글상자를 편집하던 중이면 이번 탭은 편집 끝내기. 단축키(⌘Z)가 듣도록 보드에 focus를 둔다
+        if (document.activeElement instanceof HTMLTextAreaElement) document.activeElement.blur();
+        rootRef.current?.focus({ preventScroll: true });
+        setActiveText(null);
+        return;
+      }
+      createText(toDoc(e));
+      return;
+    }
     if (d.kind === 'draw') {
       commit({ ...snapRef.current, strokes: [...snapRef.current.strokes, d.stroke] });
     } else if (d.kind === 'marquee') {
@@ -311,6 +341,7 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
     const c = canvasRef.current;
     if (!c) return;
     const onTouch = (ev: TouchEvent) => {
+      if (tool === 'text') return; // 글상자 도구: 손가락은 스크롤, 탭은 글상자
       const stylus = Array.from(ev.touches).some((t) => (t as Touch & { touchType?: string }).touchType === 'stylus');
       if (stylus || !(pencilOnly || penSeen.current)) ev.preventDefault();
     };
@@ -320,7 +351,7 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
       c.removeEventListener('touchstart', onTouch);
       c.removeEventListener('touchmove', onTouch);
     };
-  }, [pencilOnly, doc]);
+  }, [pencilOnly, doc, tool]);
 
   // ---------- 이미지 ----------
   const imageIds = snap.images.map((i) => i.attachmentId);
@@ -379,6 +410,87 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
     commit(final);
   };
 
+  // ---------- 글상자 (키보드 입력) ----------
+  const docScale = (doc?.width ?? 1200) / 1200;
+  const createText = (p: { x: number; y: number }) => {
+    if (!doc) return;
+    const size = round(textSize * docScale);
+    const x = Math.max(0, Math.min(p.x - 6, doc.width - 120));
+    const t: InkText = { id: uuid(), x: round(x), y: round(Math.max(0, p.y - size * 0.8)), w: round(Math.min(doc.width * 0.45, doc.width - x - 8)), text: '', size, color: penColor };
+    editStart.current = snapRef.current;
+    // iOS는 사용자 탭 처리 중에 focus()해야 키보드가 올라온다 → 동기 렌더 후 바로 focus
+    flushSync(() => {
+      const next = { ...snapRef.current, texts: [...snapRef.current.texts, t] };
+      snapRef.current = next;
+      setSnap(next);
+      setActiveText(t.id);
+    });
+    document.getElementById(`ink-text-${t.id}`)?.focus();
+  };
+  const setTexts = (texts: InkText[]) => {
+    const next = { ...snapRef.current, texts };
+    snapRef.current = next;
+    setSnap(next);
+    scheduleSave();
+  };
+  const onTextFocus = (id: string) => {
+    setActiveText(id);
+    if (!editStart.current) editStart.current = snapRef.current;
+  };
+  const onTextChange = (id: string, text: string) => setTexts(snapRef.current.texts.map((t) => (t.id === id ? { ...t, text } : t)));
+  const onTextBlur = (id: string) => {
+    const t = snapRef.current.texts.find((x) => x.id === id);
+    if (t && !t.text.trim()) {
+      setTexts(snapRef.current.texts.filter((x) => x.id !== id));
+      setActiveText((a) => (a === id ? null : a));
+    }
+    const start = editStart.current;
+    editStart.current = null;
+    if (start && JSON.stringify(start.texts) !== JSON.stringify(snapRef.current.texts)) {
+      history.current.past.push(start);
+      history.current.future = [];
+      forceHistory((n) => n + 1);
+    }
+  };
+  const styleActiveText = (c: Partial<InkText>) => {
+    if (!activeText || !snapRef.current.texts.some((t) => t.id === activeText)) return;
+    commit({ ...snapRef.current, texts: snapRef.current.texts.map((t) => (t.id === activeText ? { ...t, ...c } : t)) });
+  };
+  const deleteText = (id: string) => {
+    editStart.current = null;
+    commit({ ...snapRef.current, texts: snapRef.current.texts.filter((t) => t.id !== id) });
+    setActiveText(null);
+  };
+  const onTextPointerDown = (e: React.PointerEvent, t: InkText, kind: 'text-move' | 'text-resize') => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const p = toDoc(e);
+    drag.current = { kind, pointerId: e.pointerId, id: t.id, x0: p.x, y0: p.y, orig: t };
+  };
+  const onTextPointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || d.pointerId !== e.pointerId || (d.kind !== 'text-move' && d.kind !== 'text-resize') || !doc) return;
+    const p = toDoc(e);
+    const dx = p.x - d.x0;
+    const dy = p.y - d.y0;
+    const texts = snapRef.current.texts.map((t) => {
+      if (t.id !== d.id) return t;
+      if (d.kind === 'text-move') return { ...t, x: round(Math.max(0, Math.min(doc.width - 40, d.orig.x + dx))), y: round(Math.max(0, d.orig.y + dy)) };
+      return { ...t, w: round(Math.max(80, Math.min(doc.width - t.x, d.orig.w + dx))) };
+    });
+    snapRef.current = { ...snapRef.current, texts };
+    setSnap(snapRef.current);
+  };
+  const onTextPointerUp = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d || d.pointerId !== e.pointerId || (d.kind !== 'text-move' && d.kind !== 'text-resize')) return;
+    drag.current = null;
+    const final = snapRef.current;
+    snapRef.current = { ...final, texts: final.texts.map((t) => (t.id === d.id ? d.orig : t)) };
+    commit(final);
+  };
+
   const deleteSelected = () => {
     if (selectedImage) {
       commit({ ...snapRef.current, images: snapRef.current.images.filter((i) => i.id !== selectedImage) });
@@ -392,8 +504,8 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
   };
 
   const clearAll = () => {
-    if (!snapRef.current.strokes.length && !snapRef.current.images.length) return;
-    commit({ strokes: [], images: [] });
+    if (!snapRef.current.strokes.length && !snapRef.current.images.length && !snapRef.current.texts.length) return;
+    commit({ strokes: [], images: [], texts: [] });
     toast('페이지를 비웠어요.', { label: '되돌리기', run: undo });
   };
 
@@ -408,9 +520,10 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
 
   // 키보드 단축키: ⌘Z / ⇧⌘Z / Delete
   useEffect(() => {
-    const el = wrapRef.current?.parentElement;
+    const el = rootRef.current;
     if (!el) return;
     const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest('textarea, input')) return; // 글상자 입력 중에는 기본 동작
       const mod = e.metaKey || e.ctrlKey;
       if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault();
@@ -430,7 +543,7 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
   const cursor = tool === 'select' ? 'crosshair' : tool === 'eraser' ? 'cell' : 'crosshair';
 
   return (
-    <div className={cx('ink', mode === 'fill' && 'ink--fill')} tabIndex={-1}>
+    <div ref={rootRef} className={cx('ink', mode === 'fill' && 'ink--fill')} tabIndex={-1}>
       <InkToolbar
         compact={compactToolbar}
         tool={tool}
@@ -438,13 +551,22 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
           setTool(t);
           setSelection(new Set());
           setSelectedImage(null);
+          if (t !== 'text' && t !== 'select') setActiveText(null);
         }}
         penColor={penColor}
-        setPenColor={setPenColor}
+        setPenColor={(c) => {
+          setPenColor(c);
+          if (tool === 'text') styleActiveText({ color: c });
+        }}
         hlColor={hlColor}
         setHlColor={setHlColor}
         penWidth={penWidth}
         setPenWidth={setPenWidth}
+        textSize={textSize}
+        setTextSize={(n) => {
+          setTextSize(n);
+          styleActiveText({ size: round(n * docScale) });
+        }}
         canUndo={history.current.past.length > 0}
         canRedo={history.current.future.length > 0}
         undo={undo}
@@ -476,6 +598,22 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
                 onPointerUp={onImagePointerUp}
               />
             ))}
+            {snap.texts.map((t) => (
+              <InkTextView
+                key={t.id}
+                t={t}
+                scale={scale}
+                editable={tool === 'text' || tool === 'select'}
+                active={activeText === t.id}
+                onFocus={onTextFocus}
+                onChange={onTextChange}
+                onBlur={onTextBlur}
+                onDelete={deleteText}
+                onPointerDown={onTextPointerDown}
+                onPointerMove={onTextPointerMove}
+                onPointerUp={onTextPointerUp}
+              />
+            ))}
             <canvas
               ref={canvasRef}
               className="ink__canvas"
@@ -483,7 +621,7 @@ export function InkCanvas({ docId, mode = 'inline', compactToolbar }: Props) {
                 width: doc.width * scale,
                 height: doc.height * scale,
                 cursor,
-                touchAction: pencilOnly ? 'pan-x pan-y' : 'none',
+                touchAction: pencilOnly || tool === 'text' ? 'pan-x pan-y' : 'none',
                 pointerEvents: tool === 'select' && selectedImage ? 'none' : 'auto',
               }}
               onPointerDown={onPointerDown}
@@ -550,6 +688,76 @@ function InkImageView({
           aria-label="크기 조절"
         />
       )}
+    </div>
+  );
+}
+
+function InkTextView({
+  t,
+  scale,
+  editable,
+  active,
+  onFocus,
+  onChange,
+  onBlur,
+  onDelete,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: {
+  t: InkText;
+  scale: number;
+  editable: boolean;
+  active: boolean;
+  onFocus: (id: string) => void;
+  onChange: (id: string, text: string) => void;
+  onBlur: (id: string) => void;
+  onDelete: (id: string) => void;
+  onPointerDown: (e: React.PointerEvent, t: InkText, kind: 'text-move' | 'text-resize') => void;
+  onPointerMove: (e: React.PointerEvent) => void;
+  onPointerUp: (e: React.PointerEvent) => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  // 내용에 맞춰 높이 자동 조절
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [t.text, t.size, t.w, scale]);
+  const showTools = active && editable;
+  const drag = { onPointerMove, onPointerUp, onPointerCancel: onPointerUp };
+  return (
+    <div
+      className={cx('ink__text', showTools && 'is-active', editable && 'is-editable')}
+      style={{ left: t.x * scale, top: t.y * scale, width: t.w * scale, zIndex: editable ? 3 : 1 }}
+    >
+      {showTools && (
+        <div className="ink__text-bar" onMouseDown={(e) => e.preventDefault()}>
+          <span className="ink__text-grip" role="button" aria-label="글상자 옮기기" title="끌어서 옮기기" onPointerDown={(e) => onPointerDown(e, t, 'text-move')} {...drag}>
+            <Move size={14} />
+          </span>
+          <button className="ink__text-del" aria-label="글상자 삭제" title="글상자 삭제" onPointerDown={(e) => e.preventDefault()} onClick={() => onDelete(t.id)}>
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+      <textarea
+        ref={ref}
+        id={`ink-text-${t.id}`}
+        className="ink__text-input"
+        value={t.text}
+        rows={1}
+        readOnly={!editable}
+        tabIndex={editable ? 0 : -1}
+        placeholder="여기에 입력"
+        aria-label="글상자"
+        style={{ fontSize: t.size * scale, color: t.color, lineHeight: TEXT_LINE, padding: 4 * scale, pointerEvents: editable ? 'auto' : 'none' }}
+        onFocus={() => onFocus(t.id)}
+        onChange={(e) => onChange(t.id, e.target.value)}
+        onBlur={() => onBlur(t.id)}
+      />
+      {showTools && <span className="ink__text-resize" role="button" aria-label="글상자 너비 조절" onPointerDown={(e) => onPointerDown(e, t, 'text-resize')} {...drag} />}
     </div>
   );
 }

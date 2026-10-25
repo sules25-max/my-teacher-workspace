@@ -164,6 +164,13 @@
   border-radius: 50%;
   background: var(--navy);
 }
+.width-dot.text-size span {
+  border-radius: 0;
+  background: none;
+  color: var(--navy);
+  font-family: var(--font-title);
+  line-height: 1;
+}
 .width-dot.is-active {
   background: var(--blue-light);
 }
@@ -177,4 +184,78 @@
   .ink-toolbar__end {
     margin-left: 0;
   }
+}
+
+/* ---------- 글상자 (키보드 입력) ---------- */
+.ink__text {
+  position: absolute;
+}
+.ink__text-input {
+  display: block;
+  width: 100%;
+  min-height: 1em;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ink__text-input:focus {
+  outline: none;
+}
+.ink__text.is-editable .ink__text-input {
+  border-color: var(--border);
+  border-style: dashed;
+}
+.ink__text.is-active .ink__text-input {
+  border-color: var(--navy);
+  border-style: solid;
+  background: rgba(255, 255, 255, 0.7);
+}
+.ink__text-input::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+.ink__text-bar {
+  position: absolute;
+  left: -1px;
+  bottom: 100%;
+  display: flex;
+  gap: 2px;
+  padding-bottom: 2px;
+}
+.ink__text-grip,
+.ink__text-del {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--navy);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--navy);
+  touch-action: none;
+}
+.ink__text-grip {
+  background: var(--bg-green);
+  cursor: move;
+}
+.ink__text-del {
+  color: var(--tx-red);
+}
+.ink__text-resize {
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  width: 16px;
+  height: 32px;
+  transform: translateY(-50%);
+  border: 1px solid var(--navy);
+  background: var(--bg-green);
+  cursor: ew-resize;
+  touch-action: none;
 }

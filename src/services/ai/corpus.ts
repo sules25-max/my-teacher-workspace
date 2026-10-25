@@ -192,7 +192,10 @@ export async function buildCorpus(s: Settings): Promise<RecordDoc[]> {
         if (b.type === 'text' || b.type === 'heading') return b.text.trim() ? `${'label' in b && b.label ? `${b.label}: ` : ''}${b.text}` : '';
         if (b.type === 'checklist') return b.items.length ? `${b.label ? `${b.label}: ` : ''}${b.items.map((i) => `${i.done ? '✓' : '□'}${i.text}`).join(', ')}` : '';
         const ink = inkById.get(b.docId);
-        return ink && (ink.strokes.length || ink.images.length) ? `(손글씨 ${ink.strokes.length}획${ink.images.length ? ` · 사진 ${ink.images.length}장` : ''} — 손글씨 글자는 읽을 수 없음)` : '';
+        if (!ink) return '';
+        const typed = (ink.texts ?? []).map((t) => t.text.trim()).filter(Boolean).join('\n');
+        const hand = ink.strokes.length || ink.images.length ? `(손글씨 ${ink.strokes.length}획${ink.images.length ? ` · 사진 ${ink.images.length}장` : ''} — 손글씨 글자는 읽을 수 없음)` : '';
+        return [typed && `글상자: ${typed}`, hand].filter(Boolean).join('\n');
       })
       .filter(Boolean)
       .join('\n');
@@ -207,7 +210,7 @@ export async function buildCorpus(s: Settings): Promise<RecordDoc[]> {
       dates: [p.createdAt.slice(0, 10), p.updatedAt.slice(0, 10)],
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
-      href: isBoard ? `board/${p.id}` : `pages/${p.id}`,
+      href: `board/${p.id}`,
     });
   }
 

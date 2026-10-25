@@ -16,7 +16,7 @@ type Tab = 'lessons' | 'meetings' | 'pages' | 'notes';
 const TABS: [Tab, string][] = [
   ['lessons', '수업 기록'],
   ['meetings', '회의록'],
-  ['pages', '페이지'],
+  ['pages', '자유보드'],
   ['notes', '메모'],
 ];
 
@@ -163,13 +163,13 @@ function MeetingArchive({ items }: { items: MeetingNote[] }) {
 }
 
 function PageArchive({ items }: { items: WorkspacePage[] }) {
-  if (!items.length) return <EmptyState text="보관한 페이지가 없어. 페이지에서 보관 버튼을 누르면 여기로 와." />;
+  if (!items.length) return <EmptyState text="보관한 자유보드가 없어. 보드에서 보관 버튼을 누르면 여기로 와." />;
   return (
     <ul className="list-reset card archive-list archive-list--card">
       {items.map((p) => (
         <li key={p.id} className="archive-row archive-row--static">
           <span className="archive-row__date">{formatShort(p.updatedAt.slice(0, 10))}</span>
-          <a className="title-font" href={p.template === 'board' ? `#/board/${p.id}` : `#/pages/${p.id}`}>
+          <a className="title-font" href={`#/board/${p.id}`}>
             {p.title}
           </a>
           <span className="spacer" />

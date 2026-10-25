@@ -223,6 +223,17 @@ export interface InkImage {
   h: number;
 }
 
+/** 보드 위에 키보드로 입력한 글상자. 좌표 · 크기는 문서 좌표 */
+export interface InkText {
+  id: string;
+  x: number;
+  y: number;
+  w: number;
+  text: string;
+  size: number;
+  color: string;
+}
+
 /** 손글씨 문서. 다시 편집할 수 있도록 stroke 자체를 JSON으로 보관한다. */
 export interface InkDoc extends BaseRecord {
   width: number;
@@ -230,6 +241,7 @@ export interface InkDoc extends BaseRecord {
   background: InkBackground;
   strokes: Stroke[];
   images: InkImage[];
+  texts?: InkText[]; // 예전 문서에는 없음
   preview?: string; // 썸네일용 작은 PNG dataURL
 }
 

@@ -1212,17 +1212,24 @@ button.task__source:hover {
   position: relative;
   display: block;
   aspect-ratio: 10 / 7;
-  border: var(--line) solid var(--navy);
+  border: 1px solid var(--navy);
   border-radius: 0;
   background: #fff;
   overflow: hidden;
-  box-shadow:
-    -6px 0 0 -2px var(--blue),
-    var(--shadow-sticker);
-  transition: transform var(--t-hover) var(--ease-out);
+  transition: box-shadow var(--t-hover);
 }
 .notebook:hover .notebook__cover {
-  transform: translateY(-2px) rotate(-0.6deg);
+  box-shadow: var(--shadow-low);
+}
+.notebook__text {
+  display: block;
+  height: 100%;
+  padding: 10px 12px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--tx-gray);
+  white-space: pre-line;
+  overflow: hidden;
 }
 .notebook__cover img {
   width: 100%;
@@ -1246,6 +1253,58 @@ button.task__source:hover {
 .board-open {
   display: grid;
   gap: var(--s2);
+}
+.boards {
+  display: grid;
+  gap: var(--s4);
+}
+.board-group {
+  display: grid;
+  gap: var(--s2);
+}
+.board-group__title {
+  margin: 0;
+}
+/* 빈 그룹은 머리줄만 작게(이름 바꾸기 · 삭제는 그대로) */
+.board-group--empty .board-group__title {
+  font-size: var(--fs-md);
+  color: var(--muted);
+}
+.board-card {
+  position: relative;
+}
+@media (max-width: 599px) {
+  .notebook-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s3);
+  }
+}
+.board-card.is-dragging {
+  opacity: 0.4;
+}
+.board-card__move {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--t-hover);
+}
+.board-card__move .icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--navy);
+  background: var(--surface);
+}
+.board-card:hover .board-card__move,
+.board-card:focus-within .board-card__move {
+  opacity: 1;
+}
+@media (hover: none) {
+  .board-card__move {
+    opacity: 0.85;
+  }
 }
 
 /* ================= ARCHIVE ================= */

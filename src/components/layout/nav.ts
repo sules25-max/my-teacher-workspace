@@ -5,7 +5,6 @@ import {
   CheckSquare,
   ClipboardList,
   Home,
-  NotebookPen,
   PenTool,
   Settings as SettingsIcon,
   TrendingUp,
@@ -26,8 +25,7 @@ export const NAV: NavItem[] = [
   { route: 'month', label: 'Monthly', ko: '월간 일정', icon: CalendarDays },
   { route: 'progress', label: 'Progress', ko: '진도표', icon: TrendingUp },
   { route: 'work', label: 'Work', ko: '회의 · 업무', icon: ClipboardList },
-  { route: 'board', label: 'Board', ko: '자유보드', icon: PenTool },
-  { route: 'pages', label: 'Pages', ko: '페이지', icon: NotebookPen, mobile: true },
+  { route: 'board', label: 'Board', ko: '자유보드', icon: PenTool, mobile: true },
   { route: 'tasks', label: 'Tasks', ko: '할 일', icon: CheckSquare, mobile: true },
   { route: 'archive', label: 'Archive', ko: '보관함', icon: Archive },
 ];
