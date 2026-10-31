@@ -8,6 +8,9 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   height: 100%;
+  /* 브라우저가 입력칸을 화면에 맞출 때 위쪽 고정 바 밑에 숨지 않게 */
+  scroll-padding-top: calc(var(--topbar-h) + var(--safe-top) + 16px);
+  scroll-padding-bottom: 24px;
 }
 
 body {

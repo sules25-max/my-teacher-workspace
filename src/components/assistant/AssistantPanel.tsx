@@ -12,7 +12,7 @@ import type { AssistantExpression } from './sprite';
 import { useSettings } from '../../hooks/useData';
 import { useRoute } from '../../hooks/useRoute';
 import { findLagging, findMemos, fromGrounded, localAnswer, openTasks, prepareNext, tidyMeeting, weekSummary, type AssistantReply, type QuickActionId } from '../../services/ai/assistant';
-import { askWithRecords, NOT_FOUND } from '../../services/ai/grounded';
+import { askGeneral, askWithRecords, NOT_FOUND } from '../../services/ai/grounded';
 import { openDailySummary } from './DailySummary';
 import { getAIProvider } from '../../services/ai/provider';
 import { cx } from '../../utils/id';
@@ -175,7 +175,7 @@ export function AssistantPanel({ open, onClose, setExpression }: Props) {
         setMode('ask');
         push({
           role: 'assistant',
-          text: remote ? '뭐든 물어봐. 지금 화면과 관련된 정보만 조금 보낼게.' : '물어봐! 지금은 기기 안 비서 모드라 할 일·진도·메모 찾기 위주로 답할 수 있어.',
+          text: remote ? '뭐든 물어봐! 내 기록에 관한 건 기록을 찾아서, 수업 아이디어 같은 건 바로 답해 줄게.' :'물어봐! 지금은 기기 안 비서 모드라 할 일·진도·메모 찾기 위주로 답할 수 있어.',
           reply: { text: '', expression: 'happy' },
         });
         setExpression('happy');
@@ -193,14 +193,18 @@ export function AssistantPanel({ open, onClose, setExpression }: Props) {
       setMode('ask');
       return run(q, () => findMemos(q, s), 'search');
     }
-    if (!remote || !includeCtx) return run(q, () => localAnswer(q, s, route), 'search');
-    // 먼저 내 기록을 검색하고, 찾은 기록만 근거로 AI가 답한다(grounded.ts)
+    if (!remote) return run(q, () => localAnswer(q, s, route), 'search');
+    // 앞선 대화(질문 + AI 답)를 함께 보내 이어지는 질문도 이해하게 한다
+    const history = messages.filter((m) => m.text && !m.images?.length).map((m) => ({ role: m.role, content: m.text.slice(0, 1500) }));
+    while (history[0]?.role === 'assistant') history.shift(); // 대화는 사용자 질문부터(Gemini 형식)
+    // 기록 보내기를 끄면: 내 기록은 보내지 않고 AI가 일반 지식으로만 답한다
+    if (!includeCtx) return run(q, async () => fromGrounded(await askGeneral(provider, q, history)));
+    // 먼저 내 기록을 검색하고, 관련 기록이 있으면 그 기록을 근거로, 없으면 일반 지식으로 AI가 답한다(grounded.ts)
     push({ role: 'user', text: q });
     setBusy(true);
     setExpression('thinking');
     react('search');
     try {
-      const history = messages.filter((m) => m.text && m.role === 'user').map((m) => ({ role: m.role, content: m.text }));
       const g = await askWithRecords(s, provider, q, history, setProgress);
       reply(fromGrounded(g));
       react(g.text.trim() === NOT_FOUND ? 'error' : g.debug.mode === 'summary' ? 'found' : 'answer');
@@ -305,7 +309,7 @@ export function AssistantPanel({ open, onClose, setExpression }: Props) {
           {remote && mode === 'ask' && (
             <label className={cx('ai-ctx', !includeCtx && 'is-off')}>
               <input type="checkbox" checked={includeCtx} onChange={(e) => setIncludeCtx(e.target.checked)} />
-              질문과 관련된 내 기록만 찾아서 AI에 보내기 (사진 · 손글씨 제외){!includeCtx && ' — 끄면 기기 안 검색 결과만 보여줘요'}
+              질문과 관련된 내 기록만 찾아서 AI에 보내기 (사진 · 손글씨 제외){!includeCtx && ' — 꺼 두면 내 기록 없이 AI가 일반 지식으로 답해요'}
             </label>
           )}
           {images.length > 0 && (

@@ -159,6 +159,12 @@ function TodayLessonRow({ s, p, rec, cls, date, current }: { s: Settings; p: Set
         ) : (
           <span className="lesson-row__lesson muted">{sug ? `제안: ${sug.lesson} ${sug.session}차시` : '계획 없음'}</span>
         )}
+        {(rec?.objective?.trim() || rec?.memo?.trim()) && (
+          <span className="lesson-row__note">
+            {rec?.objective?.trim() && <span className="lesson-row__goal">{rec.objective.trim()}</span>}
+            {rec?.memo?.trim()}
+          </span>
+        )}
       </button>
       {rec?.lesson ? (
         <button

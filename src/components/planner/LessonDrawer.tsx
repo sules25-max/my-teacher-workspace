@@ -151,7 +151,7 @@ function LessonCard({ target }: { target: LessonTarget }) {
 
       <section className="lesson-card__section">
         <h3 className="section-title">
-          수업 메모 <span className="chip">이 반에만 저장</span>
+          수업 메모 <span className="chip">주간 계획 · 오늘 수업에 보여요</span>
         </h3>
         <AutoTextarea
           saveKey={`${record?.id ?? 'new'}:memo`}
@@ -159,7 +159,7 @@ function LessonCard({ target }: { target: LessonTarget }) {
           onSave={(v) => patch({ memo: v })}
           lined
           rows={5}
-          placeholder="예) speaking 활동 시간이 조금 부족했음."
+          placeholder="예) 시장놀이 역할극, 가격 카드 준비 / 수업 뒤: speaking 시간이 조금 부족했음"
         />
       </section>
 

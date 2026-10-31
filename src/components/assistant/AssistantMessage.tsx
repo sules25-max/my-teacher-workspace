@@ -59,11 +59,11 @@ export function AssistantMessage({ m, onActionResult }: { m: ChatMessage; onActi
 
 /** 개발자 모드 전용: AI가 실제로 검색하고 사용한 기록 */
 function DebugRecords({ debug }: { debug: AIDebug }) {
-  const mode = { answer: '검색 후 AI 답변', summary: '단계적 요약', list: '기기 안 검색(AI 미사용)', none: '검색 결과 없음(AI 미호출)' }[debug.mode];
+  const mode = { answer: '검색 후 AI 답변', summary: '단계적 요약', list: '기기 안 검색(AI 미사용)', none: '검색 결과 없음(AI 미호출)', general: '기록 없이 AI 일반 답변' }[debug.mode];
   return (
     <details className="ai-debug">
       <summary>
-        🔧 검색된 기록 {debug.matched}건 · AI에 보낸 기록 {debug.mode === 'answer' || debug.mode === 'summary' ? debug.used.length : 0}건
+        🔧 검색된 기록 {debug.matched}건 · AI에 보낸 기록 {debug.mode === 'answer' || debug.mode === 'summary' || debug.sentChars > 0 ? debug.used.length : 0}건
       </summary>
       <div className="ai-debug__body">
         <p>방식: {mode}{debug.note ? ` · ${debug.note}` : ''}</p>

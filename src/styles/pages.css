@@ -151,6 +151,23 @@
 .lesson-row__class {
   font-size: var(--fs-lg);
 }
+.lesson-row__note {
+  flex-basis: 100%;
+  font-size: var(--fs-sm);
+  line-height: 1.35;
+  color: var(--tx-gray);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.lesson-row__goal {
+  display: block;
+  color: var(--navy);
+}
+.lesson-row__goal::before {
+  content: '목표 ';
+  color: var(--tx-pink);
+  font-family: var(--font-title);
+}
 .lesson-row.is-done .lesson-row__class,
 .lesson-row.is-done .lesson-row__lesson {
   color: var(--muted);

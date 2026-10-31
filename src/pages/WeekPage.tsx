@@ -315,7 +315,12 @@ export function LessonCell({ date, p, rec, eff, today, dragProps }: CellProps) {
         ) : (
           <span className="lesson-cell__hint">+ 계획</span>
         )}
-        {rec?.memo && <span className="lesson-cell__memo">{rec.memo}</span>}
+        {(rec?.objective?.trim() || rec?.memo?.trim()) && (
+          <span className="lesson-cell__memo">
+            {rec?.objective?.trim() && <span className="lesson-cell__goal">{rec.objective.trim()}</span>}
+            {rec?.memo?.trim()}
+          </span>
+        )}
       </button>
       {rec?.lesson && (
         <button
